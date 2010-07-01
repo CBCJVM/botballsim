@@ -1,9 +1,27 @@
+/*
+ * This file is part of JBSim.
+ * 
+ * JBSim is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JBSim is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JBSim.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package org.icx.sim;
 
 import java.util.*;
 import java.io.*;
 import java.util.List;
 import javax.swing.*;
+
 import java.awt.event.*;
 import java.awt.*;
 import java.net.URL;
@@ -131,7 +149,7 @@ public class Simulator extends JFrame implements Runnable {
 		// initialize
 		motors = new MotorComponent[4];
 		servos = new MotorComponent[4];
-		gc = new GraphicsComponent();
+		gc = new GraphicsComponent(3000, 3000);
 		gc.addKeyListener(events);
 		Container c = getContentPane();
 		c.setLayout(new BorderLayout());
@@ -191,8 +209,8 @@ public class Simulator extends JFrame implements Runnable {
 			if (i < 3) controls.add(Box.createHorizontalStrut(5));
 		}
 		// graphics component is scrollable
-		gc.setPreferredSize(new Dimension(1024, 768));
 		JScrollPane p = new JScrollPane(gc);
+		p.setBackground(Color.WHITE);
 		p.setBorder(BorderFactory.createEmptyBorder());
 		c.add(controls, BorderLayout.NORTH);
 		c.add(p, BorderLayout.CENTER);
@@ -204,21 +222,48 @@ public class Simulator extends JFrame implements Runnable {
 		buttons = new JButton[] {
 			new JButton("A"),
 			new JButton("B"),
-			new JButton("U"),
-			new JButton("D"),
-			new JButton("L"),
-			new JButton("R"),
+			new JButton(getIcon("up")),
+			new JButton(getIcon("down")),
+			new JButton(getIcon("left")),
+			new JButton(getIcon("right")),
 			new JButton("Black")
 		};
+		// name the buttons with tool tips
+		buttons[0].setToolTipText("Choose");
+		buttons[1].setToolTipText("Cancel");
+		buttons[2].setToolTipText("Up");
+		buttons[3].setToolTipText("Down");
+		buttons[4].setToolTipText("Left");
+		buttons[5].setToolTipText("Right");
+		buttons[6].setToolTipText("Black");
 		// intialize controller buttons
 		controls.add(lbl);
+		lbl = new JLabel("Zoom: ");
+		lbl.setFont(lbl.getFont().deriveFont(14.f));
 		for (int i = 0; i < buttons.length; i++) {
 			buttons[i].setFocusable(false);
-			buttons[i].setActionCommand(buttons[i].getText().toLowerCase());
+			buttons[i].setFont(lbl.getFont());
+			buttons[i].setActionCommand(buttons[i].getToolTipText().toLowerCase());
 			buttons[i].addActionListener(events);
 			controls.add(buttons[i]);
 		}
+		// zoom in and out
+		controls.add(Box.createHorizontalStrut(100));
+		controls.add(lbl);
+		JButton zIn = new JButton("+");
+		zIn.setFocusable(false);
+		zIn.setFont(lbl.getFont());
+		zIn.setActionCommand("in");
+		zIn.addActionListener(events);
+		controls.add(zIn);
+		JButton zOut = new JButton("-");
+		zOut.setFocusable(false);
+		zOut.setFont(lbl.getFont());
+		zOut.setActionCommand("out");
+		zOut.addActionListener(events);
+		controls.add(zOut);
 		vert.add(controls);
+		// digital panel
 		controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 5));
 		lbl = new JLabel("Digital");
 		lbl.setFont(lbl.getFont().deriveFont(16.0f));
@@ -256,6 +301,7 @@ public class Simulator extends JFrame implements Runnable {
 		vert.add(analogs[10]);
 		// LCD screen
 		lcd = new JTextArea(8, 30);
+		lcd.setFocusable(false);
 		lcd.setEditable(false);
 		lcd.setFont(new Font("Arial", Font.PLAIN, 11));
 		p = new JScrollPane(lcd);
@@ -395,9 +441,7 @@ public class Simulator extends JFrame implements Runnable {
 				return icon;
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
-				JOptionPane.showMessageDialog(null, "Could not find a required image.",
-					"Error", JOptionPane.ERROR_MESSAGE);
-				System.exit(1);
+				die("Could not find a required image.");
 				return null;
 			}
 		else try {
@@ -408,11 +452,19 @@ public class Simulator extends JFrame implements Runnable {
 			return icon;
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
-			JOptionPane.showMessageDialog(null, "Could not find a required image.",
-				"Error", JOptionPane.ERROR_MESSAGE);
-			System.exit(1);
+			die("Could not find a required image.");
 			return null;
 		}
+	}
+	/**
+	 * Kills the simulator with an error. Too bad.
+	 * 
+	 * @param message the error message
+	 */
+	public static final void die(String message) {
+		JOptionPane.showMessageDialog(null, "Could not read information from robots.txt",
+			"Error", JOptionPane.ERROR_MESSAGE);
+		System.exit(1);
 	}
 	// Sets the play/pause status button appropriately
 	protected void setPP() {
@@ -489,7 +541,9 @@ public class Simulator extends JFrame implements Runnable {
 		// kill motors/servos
 		disableServos();
 		ao();
-		// TODO stop robot, clear create status...
+		// can't hurt
+		for (SimRobot bot : robots)
+			bot.setSpeeds(0, 0);
 	}
 	/**
 	 * Runs or pauses the program.
@@ -506,6 +560,17 @@ public class Simulator extends JFrame implements Runnable {
 		}
 		// update status
 		setPP();
+	}
+	/**
+	 * Changes the zoom.
+	 * 
+	 * @param amount the amount to modify the zoom
+	 */
+	public void zoom(int amount) {
+		int zoom = gc.getZoom();
+		zoom = Math.max(-3, Math.min(6, zoom + amount));
+		gc.setZoom(zoom);
+		validate();
 	}
 	/**
 	 * Activates or deactives the Hand of God button.
@@ -576,15 +641,28 @@ public class Simulator extends JFrame implements Runnable {
 			super("Graphics Thread");
 		}
 		public void run() {
+			long lastRepaint = 0L, lastMove = 0L, time;
 			while (true) {
-				gc.repaint();
-				// change icon when program ends
-				if (instance != null && !instance._isRunning() && !pause) {
-					pause = true;
-					setPP();
+				time = System.currentTimeMillis();
+				if (time - lastRepaint > 15L) {
+					// handle 15ms tasks
+					lastRepaint = time;
+					gc.repaint();
+					// change icon when program ends
+					if (instance != null && !instance._isRunning() && !pause) {
+						pause = true;
+						setPP();
+					}
+				}
+				if (time - lastMove > 5L) {
+					// handle 5ms tasks (move robot)
+					if (!isPaused())
+						for (SimRobot bot : robots)
+							bot.move(lastMove - time);
+					lastMove = time;
 				}
 				try {
-					Thread.sleep(30L);
+					Thread.sleep(1L);
 				} catch (Exception e) {
 					return;
 				}
@@ -638,22 +716,26 @@ public class Simulator extends JFrame implements Runnable {
 				handOfGod();
 			else if (cmd.equals("stop"))
 				eStop();
-			else if (cmd.equals("a"))
+			else if (cmd.equals("in"))
+				zoom(1);
+			else if (cmd.equals("out"))
+				zoom(-1);
+			else if (cmd.equals("choose"))
 				// Check for A button
 				buttons[0].setSelected(!buttons[0].isSelected());
-			else if (cmd.equals("b"))
+			else if (cmd.equals("cancel"))
 				// Check for B button
 				buttons[1].setSelected(!buttons[1].isSelected());
-			else if (cmd.equals("u"))
+			else if (cmd.equals("up"))
 				// Check for UP button
 				buttons[2].setSelected(!buttons[2].isSelected());
-			else if (cmd.equals("d"))
+			else if (cmd.equals("down"))
 				// Check for DOWN button
 				buttons[3].setSelected(!buttons[3].isSelected());
-			else if (cmd.equals("l"))
+			else if (cmd.equals("left"))
 				// Check for LEFT button
 				buttons[4].setSelected(!buttons[4].isSelected());
-			else if (cmd.equals("r"))
+			else if (cmd.equals("right"))
 				// Check for RIGHT button
 				buttons[5].setSelected(!buttons[5].isSelected());
 			else if (cmd.equals("black"))
@@ -664,35 +746,48 @@ public class Simulator extends JFrame implements Runnable {
 			// Map key presses to buttons on the screen
 			if (e.getKeyCode() == KeyEvent.VK_A)
 				buttons[0].setSelected(true);
-			if (e.getKeyCode() == KeyEvent.VK_B)
+			else if (e.getKeyCode() == KeyEvent.VK_B)
 				buttons[1].setSelected(true);
-			if (e.getKeyCode() == KeyEvent.VK_UP)
+			else if (e.getKeyCode() == KeyEvent.VK_UP)
 				buttons[2].setSelected(true);
-			if (e.getKeyCode() == KeyEvent.VK_DOWN)
+			else if (e.getKeyCode() == KeyEvent.VK_DOWN)
 				buttons[3].setSelected(true);
-			if (e.getKeyCode() == KeyEvent.VK_LEFT)
+			else if (e.getKeyCode() == KeyEvent.VK_LEFT)
 				buttons[4].setSelected(true);
-			if (e.getKeyCode() == KeyEvent.VK_RIGHT)
+			else if (e.getKeyCode() == KeyEvent.VK_RIGHT)
 				buttons[5].setSelected(true);
-			if (e.getKeyCode() == KeyEvent.VK_PERIOD)
+			else if (e.getKeyCode() == KeyEvent.VK_PERIOD)
 				buttons[6].setSelected(true);
 		}
 		public void keyReleased(KeyEvent e) {
 			// Map key presses to buttons on the screen
 			if (e.getKeyCode() == KeyEvent.VK_A)
 				buttons[0].setSelected(false);
-			if (e.getKeyCode() == KeyEvent.VK_B)
+			else if (e.getKeyCode() == KeyEvent.VK_B)
 				buttons[1].setSelected(false);
-			if (e.getKeyCode() == KeyEvent.VK_UP)
+			else if (e.getKeyCode() == KeyEvent.VK_UP)
 				buttons[2].setSelected(false);
-			if (e.getKeyCode() == KeyEvent.VK_DOWN)
+			else if (e.getKeyCode() == KeyEvent.VK_DOWN)
 				buttons[3].setSelected(false);
-			if (e.getKeyCode() == KeyEvent.VK_LEFT)
+			else if (e.getKeyCode() == KeyEvent.VK_LEFT)
 				buttons[4].setSelected(false);
-			if (e.getKeyCode() == KeyEvent.VK_RIGHT)
+			else if (e.getKeyCode() == KeyEvent.VK_RIGHT)
 				buttons[5].setSelected(false);
-			if (e.getKeyCode() == KeyEvent.VK_PERIOD)
+			else if (e.getKeyCode() == KeyEvent.VK_PERIOD)
 				buttons[6].setSelected(false);
+			else if (e.getKeyCode() == KeyEvent.VK_SPACE)
+				// play/pause
+				play();
+			else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE)
+				// kill!
+				eStop();
+			else if (e.getKeyCode() == KeyEvent.VK_PLUS ||
+				e.getKeyCode() == KeyEvent.VK_EQUALS)
+				// zoom in/out
+				zoom(1);
+			else if (e.getKeyCode() == KeyEvent.VK_MINUS ||
+				e.getKeyCode() == KeyEvent.VK_UNDERSCORE)
+				zoom(-1);
 		}
 		public void keyTyped(KeyEvent e) {}
 	}

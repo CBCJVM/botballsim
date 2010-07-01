@@ -1,3 +1,20 @@
+/*
+ * This file is part of JBSim.
+ * 
+ * JBSim is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JBSim is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JBSim.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package org.icx.sim;
 
 import java.util.*;
@@ -12,14 +29,14 @@ import javax.swing.*;
 public class BoardReader {
 	// Loads board into the simulator from the given file
 	public static void loadBoard(Simulator sim, String file) {
-		loadBoard(sim, new File(file));
+		loadBoard(sim, Simulator.class.getResourceAsStream("/" + file));
 	}
-	// Loads board into the simulator from the given file
-	public static void loadBoard(Simulator sim, File file) {
+	// Loads board into the simulator from the given stream
+	public static void loadBoard(Simulator sim, InputStream is) {
 		try {
-			BufferedReader br = new BufferedReader(new FileReader(file));
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
 			String line, type, dir; StringTokenizer str;
-			int len, x, y, finalDir; Wall wall;
+			int len, finalDir; float x, y; Wall wall;
 			while ((line = br.readLine()) != null) {
 				line = line.trim().toLowerCase();
 				// ignore comment or blank
@@ -42,7 +59,8 @@ public class BoardReader {
 					else
 						// error here?
 						finalDir = Wall.DIR_LTR;
-					wall = new Wall(Wall.TYPE_PVC, finalDir, len);
+					wall = new Wall(Wall.TYPE_PVC, finalDir,
+						Math.round(len * RobotConstants.MM_TO_PIXELS));
 					wall.setLocation(new Location(x, y));
 					sim.add(wall);
 				} else if (type.equals("corner") || type.equals("right") || type.equals("2way")) {
@@ -64,7 +82,7 @@ public class BoardReader {
 			}
 			br.close();
 		} catch (Exception e) {
-			throw new RuntimeException("Failed to read game board from " + file.getAbsolutePath());
+			throw new RuntimeException("Failed to read game board");
 		}
 	}
 	// Interprets a direction into an integer for compass oriented objects

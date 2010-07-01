@@ -1,5 +1,16 @@
 # Board information for an empty world
+#  Each PVC piece is 26 mm thick
+#  This world is 1 m = 1000 mm on a side (inside dimension) and starts at (100, 100)
+#  Remember: X is left-right position and Y is up-down (like Cartesian in math).
 
-pvc, ltr, 460, 400, 150
-pvc, ttb, 360, 164, 336
-corner, north, -1, 164, 150
+pvc, ltr, 1000, 603, 87
+pvc, ttb, 1000, 87, 603
+pvc, ltr, 1000, 603, 1115
+pvc, ttb, 1000, 1115, 603
+# Corners link the right to the bottom (south to east) relative to the direction.
+#  So north is an south-east, east is a south-west,
+#  south is a north-west, and west is a north-east.
+corner, north, -1, 87, 87
+corner, east, -1, 87, 1119
+corner, south, -1, 1119, 1119
+corner, west, -1, 1119, 87

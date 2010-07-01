@@ -1,0 +1,22 @@
+# This file stores information about available robot selections
+# It is not 100% accurate
+
+cbc2.radius = 105
+cbc2.delta = 0
+cbc2.icon = cbc2
+cbc2.factor = 0.26316
+
+cbc.radius = 105
+cbc.delta = 0
+cbc.icon = cbc
+cbc.factor = 0.26316
+
+create.radius = 120
+create.delta = 0
+create.icon = create
+create.factor = 1
+
+# Need an icon and testing so XBC can come online with the generic model.
+# xbc.radius = 50
+# xbc.icon = cbc2
+# xbc.factor = 0.26316

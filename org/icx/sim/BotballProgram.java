@@ -1,3 +1,20 @@
+/*
+ * This file is part of JBSim.
+ * 
+ * JBSim is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JBSim is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JBSim.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package org.icx.sim;
 
 import java.lang.reflect.*;
@@ -97,14 +114,17 @@ public abstract class BotballProgram {
 	// Create Library: connect to Create
 	public int create_connect() {
 		_s();
-		if (!_ic()) {
+		if (!_bot.getController().equals(SimRobot.CREATE))
+			printf("Create not available\n");
+		else if (!_ic()) {
 			g_create_USB = 1;
 			g_create_connected = 1;
 			create_start();
 			create_advance_led(1);
 			create_safe();
 			return 0;
-		} else return -1;
+		}
+		return -1;
 	}
 	// Create Library: disconnect from Create
 	public void create_disconnect() {
@@ -207,9 +227,6 @@ public abstract class BotballProgram {
 	public int create_angle() {
 		_nc();
 		if (!_ic()) return -1;
-		// this is a little unfair, as it caters to people who abuse this inaccurate
-		//  measure of angle by providing them with the raw simulator headings.
-		// keep this in mind when using the simulator.
 		gc_angle = gc_total_angle = 0;
 		return 0;
 	}
@@ -251,7 +268,7 @@ public abstract class BotballProgram {
 	public int create_wall() {
 		_nc();
 		if (!_ic()) return -1;
-		// This points to the right but is too high to trip on pipes.
+		// There is no virtual wall.
 		gc_wall = 0;
 		gc_wall_amt = 0;
 		// never a home base
@@ -322,6 +339,7 @@ public abstract class BotballProgram {
 			}
 			// If anyone can verify that the Create uses a different formula,
 			//  please feel free to substitute.
+			_bot.setSpeeds(_gc_l, _gc_r);
 		}
 	}
 	// Create Library: drive each wheel at given velocity in mm/sec
@@ -333,6 +351,7 @@ public abstract class BotballProgram {
 			gc_rvel = r;
 			_gc_l = l;
 			_gc_r = r;
+			_bot.setSpeeds(_gc_l, _gc_r);
 		}
 	}
 	// Create Library: drives straight at given velocity
@@ -355,9 +374,8 @@ public abstract class BotballProgram {
 		_nc();
 		if (_ic()) {
 			create_drive_direct(-v, v);
-			// 16.5 ticks per degree.
-			//long targ = Math.abs(degrees) * 165L / 10L;
 			// Do NOT fix this to be exact!
+			// TODO
 			create_stop();
 		}
 	}
@@ -419,7 +437,7 @@ public abstract class BotballProgram {
 			off(port);
 			return;
 		}
-		pid_control(port, speed * (int)Math.signum(ticks -
+		_pid_control(port, speed * (int)Math.signum(ticks -
 			get_motor_position_counter(port)), ticks);
 	}
 	// XBC/CBC Library: alias for mtp
@@ -427,7 +445,7 @@ public abstract class BotballProgram {
 		mtp(port, speed, ticks);
 	}
 	// PID controls motor on given port to the new destination at given speed
-	private void pid_control(int port, int speed, long dest) {
+	private void _pid_control(int port, int speed, long dest) {
 		if (port < 0 || port > 3) return;
 		mav(port, speed);
 		_dest[port] = dest;
@@ -534,6 +552,9 @@ public abstract class BotballProgram {
 			time = _mseconds();
 			// stop motors while paused
 			while (_sim.isPaused() && !_l()) Thread.yield();
+			// TODO allow other motors, different setups, gearing...
+			if (!_bot.getController().equals(SimRobot.CREATE))
+				_bot.setSpeeds(_vel[0] * 11, _vel[3] * 11);
 			if (_l()) break;
 			for (i = 0; i < 4; i++) {
 				if ((_vel[i] > 0 && _counts[i] > _dest[i]) ||
@@ -551,7 +572,7 @@ public abstract class BotballProgram {
 				}
 				// rotate the appropriate servo at a max rate of 0.2 sec/60 deg, 1.2 rev/s
 				servo = _bot.getServo(i);
-				if (_servos_enabled && _loc[i] != _pos[i] && time != last) {
+				if (servo.isEnabled() && _loc[i] != _pos[i] && time != last) {
 					diff = 1000 / (int)(time - last);
 					// slew servo to position (always exact, it's an unloaded servo)
 					if (_loc[i] < _pos[i])
@@ -827,7 +848,7 @@ public abstract class BotballProgram {
 		//printf("Process %d not found\n", id);
 		return 0;
 	}
-	// TODO: use this function to fix up boolean/int confusion in re-parse
+	// Does a C like test for true/false on almost any object.
 	public boolean test(Object obj) {
 		if (obj == null) return false;
 		if (obj instanceof Integer)
@@ -974,7 +995,6 @@ public abstract class BotballProgram {
 	void invokeMain() {
 		_killAll();
 		_threads.clear();
-		while (_sim.isPaused()) Thread.yield();
 		_start = System.currentTimeMillis();
 		_total = 0L;
 		start_process("main");
