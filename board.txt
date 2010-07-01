@@ -1,0 +1,5 @@
+# Board information for an empty world
+
+pvc, ltr, 460, 400, 150
+pvc, ttb, 360, 164, 336
+corner, north, -1, 164, 150
