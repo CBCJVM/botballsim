@@ -82,7 +82,8 @@ public class BoardReader {
 			}
 			br.close();
 		} catch (Exception e) {
-			throw new RuntimeException("Failed to read game board");
+			e.printStackTrace();
+			Simulator.die("Failed to read game board.");
 		}
 	}
 	// Interprets a direction into an integer for compass oriented objects
@@ -101,7 +102,9 @@ public class BoardReader {
 	}
 	// Shows a robot selection list.
 	public static String selectRobot(Simulator parent) {
-		String[] robots = SimRobot.AVAILABLE;
+		String[] robots = RobotsFile.getEnabled();
+		if (robots == null || robots.length < 1)
+			Simulator.die("No robots are enabled. Please enable at least one type in robots.txt.");
 		// if parent is null, unparented
 		Object bot = JOptionPane.showInputDialog(parent, "Select a robot type:", "Select Robot",
 			JOptionPane.QUESTION_MESSAGE, null, robots, robots[0]);

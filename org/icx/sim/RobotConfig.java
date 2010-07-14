@@ -17,31 +17,28 @@
 
 package org.icx.sim;
 
-import java.awt.geom.*;
+import java.beans.*;
 
 /**
- * Class which parents all static objects (pipes, lines, etc)
- * 
- * @author Stephen Carlson
+ * A class that stores configuration information about a robot -
+ *  sensor, start position, type, and more.
  */
-public abstract class StaticObject extends SimObject {
-	// The cached transformed collision
-	private Area transCol;
+public class RobotConfig implements java.io.Serializable {
+	// Allows reconstruction of this configuration, without
+	//  need for setRobotType()
+	public static final PersistenceDelegate del =
+		new DefaultPersistenceDelegate(new String[] { "type" });
 
-	public StaticObject(String image) {
-		super(image);
-		clearCollision();
-	}
+	// The robot type (immutable)
+	private String type;
+	// The start location.
+	private Location start;
+	// The analog sensors.
+	private AnalogSlider[] analog;
+	private LockingButton[] digital;
 
-	// Clears the cached collision.
-	protected void clearCollision() {
-		transCol = null;
-	}
-
-	// Stores the transformed collision area
-	public Area getTransformedCollision() {
-		if (transCol == null)
-			transCol = super.getTransformedCollision();
-		return transCol;
+	// Creates a robot configuration with the specified type.
+	public RobotConfig(String robotType) {
+		type = robotType;
 	}
 }

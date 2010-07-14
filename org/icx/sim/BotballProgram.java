@@ -37,6 +37,17 @@ public abstract class BotballProgram {
 	public static final int RIGHT_BUTTON = 8;
 	public static final int UP_BUTTON = 16;
 	public static final int DOWN_BUTTON = 32;
+	// Formal XBC #define for buttons
+	public static final int A_BTN = 0x0001;
+	public static final int B_BTN = 0x0002;
+	public static final int RIGHT_BTN = 0x0010;
+	public static final int LEFT_BTN = 0x0020;
+	public static final int UP_BTN = 0x0040;
+	public static final int DOWN_BTN = 0x0080;
+	public static final int R_BTN = 0x0100;
+	public static final int L_BTN = 0x0200;
+	public static final int ALL_BTNS = 0x03F3;
+	public static final int NO_BTNS = 0x0000;
 	// Internal Create mode constants
 	private static final int _MODE_SAFE = 2;
 	private static final int _MODE_FULL = 3;
@@ -64,13 +75,13 @@ public abstract class BotballProgram {
 	private long[] _counts;     // the BEMF counters
 	private int[] _pos;         // servo positions
 	private int[] _loc;         // servo actual locations
-	private boolean _servos_enabled = false;
+	private boolean _servos_enabled = false; // XBC/HB servo enable flag
 	private List<UserThread> _threads; // all user threads
 	private int _nextID;        // next available thread ID
 	private Simulator _sim;     // parent simulator
 	private SimRobot _bot;      // robot to control
-	private long _start;        // timing variables
-	private long _total;
+	private volatile long _start; // timing variables
+	private volatile long _total;
 	private UserThread pidTask; // moves servos and motors
 
 	/**
@@ -101,7 +112,10 @@ public abstract class BotballProgram {
 	 */
 	private void _nc() {
 		_s();
-		if (g_create_connected == 0) _bot.print("No Create connection mode is 0\n");
+		if (!_bot.getDrive().equals("gc") || !_bot.controllerAtLeast(SimRobot.XBC))
+			_bot.print("Create not available\n");
+		else if (g_create_connected == 0)
+			_bot.print("No Create connection mode is 0\n");
 	}
 	/**
 	 * Checks for a Create connection.
@@ -114,8 +128,8 @@ public abstract class BotballProgram {
 	// Create Library: connect to Create
 	public int create_connect() {
 		_s();
-		if (!_bot.getController().equals(SimRobot.CREATE))
-			printf("Create not available\n");
+		if (!_bot.getDrive().equals("gc") || !_bot.controllerAtLeast(SimRobot.XBC))
+			_bot.print("Create not available\n");
 		else if (!_ic()) {
 			g_create_USB = 1;
 			g_create_connected = 1;
@@ -172,18 +186,15 @@ public abstract class BotballProgram {
 	}
 	// Create Library: spot clean
 	public void create_spot() {
-		_nc();
-		if (_ic()) _bot.print("Simulator doesn't currently support spot clean\n");
+		create_demo(1);
 	}
 	// Create Library: cover
 	public void create_cover() {
-		_nc();
-		if (_ic()) _bot.print("Simulator doesn't currently support cover\n");
+		create_demo(2);
 	}
 	// Create Library: cover and dock
 	public void create_cover_dock() {
-		_nc();
-		if (_ic()) _bot.print("Simulator doesn't currently support cover dock\n");
+		create_demo(3);
 	}
 	// Create Library: play demo
 	public void create_demo(int n) {
@@ -211,14 +222,18 @@ public abstract class BotballProgram {
 		_nc();
 		if (!_ic()) return -1;
 		// FIXME
-		gc_lbump = gc_rbump = gc_ldrop = gc_rdrop = gc_fdrop = 0;
+		gc_lbump = gc_rbump = 0;
+		// Drops can never trigger.
+		gc_ldrop = gc_rdrop = gc_fdrop = 0;
 		return 0;
 	}
 	// Create Library: update cliffs
 	public int create_cliffs() {
 		_nc();
 		if (!_ic()) return -1;
-		// FIXME
+		// FIXME 2D representation, so cliffs can never fire
+		//  However, amounts are related to the reflectance as observed with the 2010
+		//  Oil Slick Detection code!!!
 		gc_rcliff = gc_rfcliff = gc_lcliff = gc_lfcliff = 0;
 		gc_rcliff_amt = gc_rfcliff_amt = gc_lcliff_amt = gc_lfcliff_amt = 0;
 		return 0;
@@ -292,7 +307,7 @@ public abstract class BotballProgram {
 	// Create Library: stop motors
 	public void create_stop() {
 		_nc();
-		if (_ic()) create_drive(0, 0);
+		if (_ic()) create_drive(0, 1);
 	}
 	// Create Library: arc turn at given average velocity with radius in mm
 	public void create_drive(int vel, int radius) {
@@ -339,7 +354,8 @@ public abstract class BotballProgram {
 			}
 			// If anyone can verify that the Create uses a different formula,
 			//  please feel free to substitute.
-			_bot.setSpeeds(_gc_l, _gc_r);
+			if (_bot.getDrive().equals("gc"))
+				_bot.setSpeeds(_gc_l, _gc_r);
 		}
 	}
 	// Create Library: drive each wheel at given velocity in mm/sec
@@ -372,10 +388,21 @@ public abstract class BotballProgram {
 	// Create Library: spins and blocks for given ~ number of degrees
 	public void create_spin_block(int v, int degrees) {
 		_nc();
+		if (v == 0 || degrees == 0) return;
 		if (_ic()) {
-			create_drive_direct(-v, v);
+			// The real one uses the encoders. If anyone wants to make this work with those,
+			//  go right ahead.
+			if (degrees > 0)
+				create_spin_CCW(v);
+			else
+				create_spin_CW(v);
+			create_angle();
+			int angle = gc_angle + degrees;
 			// Do NOT fix this to be exact!
-			// TODO
+			while ((degrees > 0 && gc_angle < angle) || (degrees < 0 && gc_angle > angle)) {
+				create_angle();
+				msleep(30L);
+			}
 			create_stop();
 		}
 	}
@@ -404,17 +431,18 @@ public abstract class BotballProgram {
 	// Create Library: loads a song into memory
 	public void create_load_song(int num) {
 		_nc();
-		if (_ic()) _bot.print("Simulator doesn't currently support create music\n");
+		if (_ic()) _bot.print("Simulator doesn't support create music\n");
 	}
 	// Create Library: plays a song
 	public void create_play_song(int num) {
 		_nc();
-		if (_ic()) _bot.print("Simulator doesn't currently support create music\n");
+		if (_ic()) _bot.print("Simulator doesn't support create music\n");
 	}
 	// END CREATE LIBRARY
 	// XBC/CBC Library: moves motor on given port at given velocity in ticks/second
 	public void mav(int port, int speed) {
 		if (port < 0 || port > 3) return;
+		if (!_checkPID()) return;
 		if (speed > 1000)
 			speed = 1000;
 		else if (speed < -1000)
@@ -424,7 +452,6 @@ public abstract class BotballProgram {
 	}
 	// XBC/CBC Library: moves motor on given port at given velocity to given destination
 	public void mrp(int port, int speed, long ticks) {
-		if (port < 0 || port > 3) return;
 		mtp(port, speed, _counts[port] + ticks);
 	}
 	// XBC/CBC Library: alias for mrp
@@ -433,6 +460,8 @@ public abstract class BotballProgram {
 	}
 	// XBC/CBC Library: moves motor on given port to given absolute destination
 	public void mtp(int port, int speed, long ticks) {
+		if (port < 0 || port > 3) return;
+		if (!_checkPID()) return;
 		if (ticks == 0) {
 			off(port);
 			return;
@@ -455,12 +484,14 @@ public abstract class BotballProgram {
 	public long get_motor_position_counter(int port) {
 		_s();
 		if (port < 0 || port > 3) return 0L;
+		if (!_checkPID()) return 0L;
 		return _counts[port];
 	}
 	// XBC/CBC Library: clears position counter on given motor
 	public void clear_motor_position_counter(int port) {
 		_s();
 		if (port < 0 || port > 3) return;
+		if (!_checkPID()) return;
 		_counts[port] = 0L;
 		_updateMotor(port);
 	}
@@ -468,6 +499,7 @@ public abstract class BotballProgram {
 	public int get_servo_position(int port) {
 		_s();
 		if (port < 0 || port > 3) return -1;
+		if (!_bot.controllerAtLeast("hb")) return -1;
 		return _pos[port];
 	}
 	// HB/XBC Library: enables all servos
@@ -485,6 +517,7 @@ public abstract class BotballProgram {
 	// HB/XBC/CBC Library: sets servo position on given port
 	public void set_servo_position(int port, int pos) {
 		_s();
+		if (!_bot.controllerAtLeast("hb")) return;
 		if (port < 0 || port > 3 || pos < -1 || pos > 2047) return;
 		_pos[port] = pos;
 		MotorComponent servo = _bot.getServo(port);
@@ -492,12 +525,19 @@ public abstract class BotballProgram {
 		else {
 			servo.setDest(pos);
 			// behavior displayed by CBC, not any other
-			servo.servoEnable();
+			if (_bot.controllerAtLeast(SimRobot.CBC));
+				servo.servoEnable();
 		}
+	}
+	// XBC/CBC Library: sets PID gains on given port
+	public void set_pid_gains(int motor, int p, int i, int d, int pd, int id, int dd) {
+		_s();
+		if (!_checkPID()) return;
 	}
 	// XBC/CBC Library: wait until mrp or mtp is done on given port
 	public void bmd(int port) {
-		while (!get_motor_done(port)) msleep(1L);
+		if (!_checkPID()) return;
+		while (!get_motor_done(port)) msleep(3L);
 	}
 	// XBC/CBC Library: alias for bmd
 	public void block_motor_done(int port) {
@@ -507,24 +547,39 @@ public abstract class BotballProgram {
 	public boolean get_motor_done(int port) {
 		_s();
 		if (port < 0 || port > 3) return false;
+		if (!_checkPID()) return true;
 		return _speed[port] == 0;
 	}
 	// RCX/HB/XBC/CBC Library: waits for given number of milliseconds
 	public void msleep(long ms) {
+		long dest = _mseconds() + ms - 10L, time;
 		_s();
-		long dest = _mseconds() + ms;
-		while (_mseconds() < dest) {
-			// use defer() or yield()?
-			try {
-				Thread.sleep(1L);
-			} catch (Exception e) { }
-			_s();
+		// Fix for exotic problem:
+		//  MSLEEP appears to have slight issues with playing/pausing,
+		//   since the exit condition is true for a frame or two while the
+		//   times are being converted when pausing.
+		//  For msleep <= 10ms, just do it.
+		//  > 10 ms, wait a bit less and ensure that the flag is higher
+		//  for a few frames in a row before quitting the loop.
+		if (ms <= 10L) try {
+			Thread.sleep(ms);
+		} catch (Exception e) { _s(); }
+		else {
+			int times = 0;
+			while ((time = _mseconds()) < dest || times < 6) {
+				// 6 times is good
+				defer();
+				if (time < dest) times = 0;
+				else times++;
+			}
 		}
 	}
 	// RCX/HB/XBC/CBC Library: yields processor time to other threads
 	public void defer() {
 		_s();
-		Thread.yield();
+		try {
+			Thread.sleep(1L);
+		} catch (Exception e) { _s(); }
 	}
 	// RCX/HB/XBC/CBC Library: waits for given number of seconds
 	public void sleep(double seconds) {
@@ -540,40 +595,72 @@ public abstract class BotballProgram {
 		return System.currentTimeMillis() - _start + _total;
 	}
 	// RCX/HB/XBC Library: returns number of milliseconds since simulation start
-	/*public long mseconds() {
+	public long mseconds() {
+		/*if (_bot.controllerAtLeast(SimRobot.CBC_V1))
+			_bot.print("mseconds() not available by default on CBC\n");*/
 		return _mseconds();
-	}*/
+	}
+	// CBC Library: returns x acceleration from -2047 to 2047?
+	public int accel_x() {
+		return 4 * (_bot.analog(8) - 512);
+	}
+	// CBC Library: returns y acceleration from -2047 to 2047?
+	public int accel_y() {
+		return 4 * (_bot.analog(9) - 512);
+	}
+	// CBC Library: returns z acceleration from -2047 to 2047?
+	public int accel_z() {
+		return 4 * (_bot.analog(10) - 512);
+	}
+	// Checks to see if controller supports PID (>= XBC)
+	protected boolean _checkPID() {
+		return _bot.controllerAtLeast(SimRobot.XBC);
+	}
 	// Controls motors and servos
 	public void pid_control_task() {
-		int i, diff; long last = _mseconds(), time = last, factor;
+		if (!_checkPID()) return;
+		int i, diff; long factor;
+		int left = -1, right = -1, ls, rs;
 		MotorComponent servo;
+		String drive = _bot.getDrive();
+		if (drive.startsWith("motor") && drive.indexOf(',') > 0) {
+			// motors are mapped to drive
+			drive = drive.substring(5);
+			try {
+				int index = drive.indexOf(',');
+				// isolate left and right motors like "motor1,3"
+				left = Integer.parseInt(drive.substring(0, index));
+				right = Integer.parseInt(drive.substring(index + 1, drive.length()));
+			} catch (Exception e) {
+				left = right = -1;
+			}
+		} else drive = null;
 		while (true) {
-			last = time;
-			time = _mseconds();
 			// stop motors while paused
-			while (_sim.isPaused() && !_l()) Thread.yield();
-			// TODO allow other motors, different setups, gearing...
-			if (!_bot.getController().equals(SimRobot.CREATE))
-				_bot.setSpeeds(_vel[0] * 11, _vel[3] * 11);
+			while (_sim.isPaused() && !_l()) defer();
 			if (_l()) break;
+			ls = rs = 0;
 			for (i = 0; i < 4; i++) {
 				if ((_vel[i] > 0 && _counts[i] > _dest[i]) ||
 						(_vel[i] < 0 && _counts[i] < _dest[i])) {
 					// not always exact but close
 					_counts[i] = _dest[i] + (System.currentTimeMillis() % 10L) - 5L;
 					// behavior for CBC v1, v2: freeze; XBC and earlier: off
-					freeze(i);
+					if (_bot.controllerAtLeast(SimRobot.CBC_V1))
+						freeze(i);
+					else
+						off(i);
 					_speed[i] = 0;
-				} else if (_vel[i] != 0 && time != last) {
-					factor = 250L * _vel[i] / (100L * (time - last));
+				} else if (_vel[i] != 0) {
+					factor = _vel[i] / 13L;
 					// slight variation
 					_counts[i] += factor + (System.currentTimeMillis() % 3L) - 1L;
 					_updateMotor(i);
 				}
 				// rotate the appropriate servo at a max rate of 0.2 sec/60 deg, 1.2 rev/s
 				servo = _bot.getServo(i);
-				if (servo.isEnabled() && _loc[i] != _pos[i] && time != last) {
-					diff = 1000 / (int)(time - last);
+				if (servo.isEnabled() && _loc[i] != _pos[i]) {
+					diff = 10;
 					// slew servo to position (always exact, it's an unloaded servo)
 					if (_loc[i] < _pos[i])
 						_loc[i] = Math.min(_loc[i] + diff, _pos[i]);
@@ -582,10 +669,15 @@ public abstract class BotballProgram {
 					servo.setPos(_loc[i]);
 					servo.setShaftAngle(180 * _loc[i] / 2048 - 90);
 				}
+				if (left == i) ls = _vel[i] * 9;
+				if (right == i) rs = _vel[i] * 9;
 			}
+			// TODO allow other motor types, gearing...
+			if (drive != null)
+				_bot.setSpeeds(ls, rs);
 			// resolution on CBC varies, XBC is probably locked at around 3L-4L (FPGA)
 			try {
-				Thread.sleep(4L + System.currentTimeMillis() % 4L);
+				Thread.sleep(6L);
 			} catch (Exception e) { }
 		}
 	}
@@ -634,9 +726,11 @@ public abstract class BotballProgram {
 	// XBC/CBC Library: PID freezes motor (not the same as electrical brake)
 	public void freeze(int port) {
 		if (port < 0 || port > 3) return;
+		if (!_checkPID()) return;
 		off(port);
 		// get_motor_done is never true if it's frozen
 		_speed[port] = 1;
+		_vel[port] = 0;
 		_dest[port] = _counts[port];
 		// approximate acceleration
 		_bot.getMotor(port).setPower(500);
@@ -646,7 +740,10 @@ public abstract class BotballProgram {
 	// RCX/HB/XBC/CBC Library: reads digital sensor on the given port
 	public boolean digital(int port) {
 		_s();
-		return false;
+		defer();
+		if (_bot.controllerEquals(SimRobot.CBC_V1)) port = port + 8;
+		if (port < 8 || port > 15) return false;
+		return _bot.digital(port);
 	}
 	// RCX/HB/XBC/CBC Library: reads analog sensor on the given port
 	public int analog(int port) {
@@ -655,7 +752,10 @@ public abstract class BotballProgram {
 	// CBC Library: reads analog sensor on the given port to 10-bit (1024) precision
 	public int analog10(int port) {
 		_s();
-		return 1022;
+		defer();
+		if (_bot.controllerEquals(SimRobot.CBC_V1)) port = port - 8;
+		if (port < 0 || port > 7) return 0;
+		return _bot.analog(port);
 	}
 	// XBC Library: reads analog sensor to 12-bit (4092) precision
 	public int analog12(int port) {
@@ -664,6 +764,7 @@ public abstract class BotballProgram {
 	// HB/XBC/CBC Library: reads sonar on given port and returns distance in mm
 	public int sonar(int port) {
 		_s();
+		if (port < 0 || port > 7) return 0;
 		return -32767;
 	}
 	// RCX/HB/XBC/CBC Library: beeps
@@ -695,6 +796,7 @@ public abstract class BotballProgram {
 	// HB/XBC/CBC Library: prints message to the screen
 	public void printf(String format, Object... args) {
 		_s();
+		if (_bot.controllerEquals(SimRobot.RCX)) return;
 		_bot.printf(format, args);
 	}
 	// CBC Library: prints message to the screen
@@ -704,14 +806,18 @@ public abstract class BotballProgram {
 	// HB/XBC Library: clears the screen
 	public void display_clear() {
 		_s();
-		// XBC
-		_bot.clearLCD();
+		if (_bot.controllerEquals(SimRobot.RCX)) return;
+		cbc_display_clear();
 	}
 	// CBC Library: clears the screen
 	public void cbc_display_clear() {
 		_s();
 		// CBC
-		_bot.print("\n\n\n\n\n\n\n\n");
+		if (_bot.controllerAtLeast(SimRobot.CBC_V1))
+			_bot.print("\n\n\n\n\n\n\n\n");
+		else
+			// XBC and HB
+			_bot.clearLCD();
 	}
 	// XBC/CBC Library: returns status of A button
 	public boolean a_button() {
@@ -751,8 +857,10 @@ public abstract class BotballProgram {
 		return _bot.getBlackButton();
 	}
 	// XBC Library: Returns status of all buttons
+	//  Used in the universal button functions too.
 	public int button_mask() {
 		_s();
+		defer(); // Common practice: while (!a_button()); which is bad!
 		return _bot.buttonMask();
 	}
 	// HB/RCX/XBC/CBC Library: cosine of angle in radians
@@ -818,12 +926,14 @@ public abstract class BotballProgram {
 	public void set_each_analog_state(int p0, int p1, int p2, int p3, int p4,
 			int p5, int p6, int p7) {
 		_s();
+		if (!_bot.controllerAtLeast(SimRobot.CBC)) return;
 		// Simulator auto manages analog states
 	}
 	// HB/RCX/XBC/CBC Library: starts named user function as a process
 	public int start_process(String fn) {
 		_s();
 		UserThread t = new UserThread(_nextID, fn);
+		t.setPriority(Thread.MIN_PRIORITY);
 		t.setName("User Thread #" + _nextID + " (" + fn + ")");
 		t.start();
 		_threads.add(t);
@@ -845,7 +955,7 @@ public abstract class BotballProgram {
 				return 1;
 			}
 		}
-		//printf("Process %d not found\n", id);
+		//_bot.print("Process %d not found\n", id);
 		return 0;
 	}
 	// Does a C like test for true/false on almost any object.
@@ -869,40 +979,68 @@ public abstract class BotballProgram {
 	}
 	// HB/RCX/XBC/CBC Library: calibrate light sensor to starting light on given port
 	public void wait_for_light(int port) {
+		boolean cbc = _bot.controllerAtLeast(SimRobot.CBC_V1);
+		int li, lo;
 		while (true) {
 			// most controllers use analog
 			//  CBC2 uses analog10
 			printf("Calibrate with sensor on port %d\n", port);
 			msleep(500L);
-			// XBC uses L and R
-			printf("Press Left when light on\n");
-			while (!left_button()) defer();
-			int li = analog(port);
+			if (cbc) {
+				// CBC uses Left/Right
+				printf("Press Left when light on\n");
+				while (!left_button()) defer();
+				li = analog10(port);
+			} else {
+				// everything else uses A/B or L/R
+				printf("Press A when light on\n");
+				while (!a_button()) defer();
+				li = analog(port);
+			}
 			beep();
 			printf("Light on value is %d\n", li);
 			msleep(500L);
 			beep();
-			printf("Press Right when light off\n");
-			while (!right_button()) defer();
-			int lo = analog(port);
+			if (cbc) {
+				// CBC
+				printf("Press Right when light off\n");
+				while (!right_button()) defer();
+				lo = analog10(port);
+			} else {
+				// Others
+				printf("Press B when light off\n");
+				while (!b_button()) defer();
+				lo = analog(port);
+			}
 			beep();
 			printf("Light off value is %d\n", lo);
 			msleep(500L);
 			int d = lo - li, center = (lo + li) / 2;
 			// value from XBC library
-			if (d > 128) {
-				printf("Good Calibration\nDifference is %d\nWaiting...", d);
+			if ((!cbc && d > 128) || (cbc && d > 512)) {
+				printf("Good Calibration\nDifference is %d\nWaiting...\n", d);
 				beep();
-				while (analog(port) > center) defer();
+				if (cbc) {
+					while (analog10(port) > center) defer();
+					printf("Going value is %d\n", analog10(port));
+				} else {
+					while (analog(port) > center) defer();
+				}
 				return;
 			} else {
 				beep();
-				printf("Bad Calibration ");
-				if (li > 128)
+				printf("Bad Calibration\n");
+				// XBC displays a nice message. Let the CBC have it too.
+				if ((!cbc && li > 128) || (cbc && li > 512))
 					printf("Aim Sensor!\n");
 				else
 					printf("Add Shielding!\n");
-				msleep(500L);
+				if (cbc)
+					msleep(500L);
+				else {
+					// XBC just hangs here
+					while (true) beep();
+				}
 			}
 		}
 	}
@@ -952,20 +1090,12 @@ public abstract class BotballProgram {
 	// HB/RCX/XBC/CBC Library: pauses simulator now
 	public void kissSimPause() {
 		_s();
-		_bot.pause();
+		_sim.pause();
 	}
 
 	// Returns create LED status
 	int[] _createLEDs() {
 		return _gc_leds;
-	}
-	// Returns create left drive motor speed
-	int _createLeft() {
-		return _gc_l;
-	}
-	// Returns create right drive motor speed
-	int _createRight() {
-		return _gc_r;
 	}
 	// Returns whether global servos are enabled
 	//  for CBC, individual servos might have different status
@@ -991,14 +1121,17 @@ public abstract class BotballProgram {
 	void _startTiming() {
 		_start = System.currentTimeMillis();
 	}
+	void _resetTiming() {
+		_total = 0L;
+	}
 	// Calls the main method of the program and starts up robot control
 	void invokeMain() {
 		_killAll();
 		_threads.clear();
-		_start = System.currentTimeMillis();
-		_total = 0L;
-		start_process("main");
+		_resetTiming();
+		_startTiming();
 		start_pid();
+		start_process("main");
 	}
 	// Starts PID control task for motors, servos
 	void start_pid() {
@@ -1111,7 +1244,6 @@ public abstract class BotballProgram {
 			} catch (Throwable e) {
 				if (e.getCause() != null) e = e.getCause();
 				if (e instanceof Killed) return;
-				// TODO match the processor-specific error messages
 				_bot.printf("Run-time Error - " + e.getClass().getSimpleName() + "\n");
 			}
 		}

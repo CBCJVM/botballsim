@@ -31,6 +31,8 @@ public class GraphicsComponent extends JComponent {
 
 	// Background color for disallowed area.
 	private static final Color BORDER = new Color(240, 240, 240);
+	// Background color for collision.
+	private static final Color CC = new Color(0, 255, 0, 64);
 	// Background color for normal execution.
 	private static final Color BG = Color.WHITE;
 	// Background color when beeping.
@@ -40,8 +42,8 @@ public class GraphicsComponent extends JComponent {
 	private java.util.List<DisplayObject> display;
 	// Current background color.
 	private Color bg;
-	// Whether all movable objects get rotation handles.
-	private boolean handles;
+	// Collision areas shown?
+	private boolean collision;
 	// The size before any zoom is applied.
 	private Dimension realSize;
 	// If zoom is >= 1, then sizes are multiplied by (zoom + 1)
@@ -52,15 +54,16 @@ public class GraphicsComponent extends JComponent {
 	/**
 	 * Creates a new simulation area with the given size in mm.
 	 * 
+	 * @param sim the simulator
 	 * @param width the width
 	 * @param height the height
 	 */
-	public GraphicsComponent(int width, int height) {
+	public GraphicsComponent(Simulator sim, int width, int height) {
 		super();
 		realSize = new Dimension(Math.round(width * RobotConstants.MM_TO_PIXELS),
 			Math.round(height * RobotConstants.MM_TO_PIXELS));
 		zoom = 1;
-		handles = false;
+		collision = false;
 		bg = BG;
 		display = new LinkedList<DisplayObject>();
 		resize();
@@ -106,6 +109,40 @@ public class GraphicsComponent extends JComponent {
 	}
 
 	/**
+	 * Transforms the given coordinate to a zoomed one.
+	 * 
+	 * @param in the input value
+	 * @return a value scaled to the zoom
+	 */
+	public float transform(float in) {
+		if (zoom >= 1)
+			// zoom in
+			return in * (zoom + 1.f);
+		else if (zoom <= -1)
+			// zoom out
+			return in / (1.f - zoom);
+		else
+			return in;
+	}
+
+	/**
+	 * Transforms the given zoomed coordinate to a regular one.
+	 * 
+	 * @param in the input value
+	 * @return a value scaled to the zoom
+	 */
+	public float invTransform(float in) {
+		if (zoom >= 1)
+			// zoom in
+			return in / (zoom + 1.f);
+		else if (zoom <= -1)
+			// zoom out
+			return in * (1.f - zoom);
+		else
+			return in;
+	}
+
+	/**
 	 * Gets the list of displayed objects.
 	 * 
 	 * @return the list of graphical items
@@ -131,12 +168,12 @@ public class GraphicsComponent extends JComponent {
 	}
 
 	/**
-	 * Turns drag/rotation handles on and off.
+	 * Turns collision indicators on and off.
 	 * 
-	 * @param render whether handles should be shown
+	 * @param render whether bounding areas are shown
 	 */
-	public void renderHandles(boolean render) {
-		handles = render;
+	public void renderCollision(boolean render) {
+		collision = render;
 		repaint();
 	}
 
@@ -161,6 +198,14 @@ public class GraphicsComponent extends JComponent {
 			// we have the lock, so render list
 			for (DisplayObject o : display)
 				o.draw(this, g2);
+		}
+		if (collision) {
+			g2.setColor(CC);
+			synchronized (display) {
+				// we have the lock, so render list
+				for (DisplayObject o : display)
+					o.fill(g2);
+			}
 		}
 		g2.dispose();
 	}

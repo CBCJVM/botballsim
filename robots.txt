@@ -1,22 +1,53 @@
 # This file stores information about available robot selections
-# It is not 100% accurate
+# Generally, it is case sensitive
+# Lines starting with # are comments
+# It is not 100% accurate, please true to real world
 
-cbc2.radius = 105
-cbc2.delta = 0
+# Generic information
+create.radius = 120
+
+#  How it works:
+#   enable=... enables controllers
+#  For each controller, the following must be defined:
+#   .type = controller code type
+#   .icon = icon in the images folder or JAR
+#   .model = collision model to use, usually a number
+#   .map = gc for create, none for static, motor#,# for outputs
+#   .radius = wheel radius from the center (if map is not gc or none)
+#   .factor = output unit/sec to mm/sec (if map is not gc or none)
+#               since Create takes speeds in mm/sec, *BC in ticks/sec, HB/RCX in PWM%
+#               the standard model uses 0.26316 for ticks/sec -> mm/sec
+
+enable=cbc,cbc2,cbc2-create,static
+
+cbc2.type = cbc2
 cbc2.icon = cbc2
+cbc2.model = 1
+cbc2.map = motor0,3
+cbc2.radius = 110
 cbc2.factor = 0.26316
 
-cbc.radius = 105
-cbc.delta = 0
+cbc.type = cbc
 cbc.icon = cbc
+cbc.model = 1
+cbc.map = motor0,3
+cbc.radius = 110
 cbc.factor = 0.26316
 
-create.radius = 120
-create.delta = 0
-create.icon = create
-create.factor = 1
+static.type = cbc2
+static.icon = cbc2
+static.model = 1
+static.map = none
+
+cbc2-create.type = cbc2
+cbc2-create.icon = create
+cbc2-create.map = gc
+cbc2-create.model = 0
 
 # Need an icon and testing so XBC can come online with the generic model.
-# xbc.radius = 50
+# xbc.type = xbc
 # xbc.icon = cbc2
+# xbc.map = motor0,3
+# xbc.model = 1
+# xbc.radius = 110
 # xbc.factor = 0.26316

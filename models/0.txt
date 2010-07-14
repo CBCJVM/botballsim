@@ -1,0 +1,18 @@
+# Collision model for Create
+
+# How it works:
+# Format is similar to robots.txt
+# The entry named "base" will be the model used from this file
+#  It may reference sub-models which are specified with other names
+#  First line is the base shape
+#  Subsequent lines consist of an operation and then a sub-model or prim
+# Operations: add, subtract, intersect, xor
+# Primitives are: ellipse, rect, poly
+#  Ellipse: ellipse, x, y, width, height
+#  Rectangle: rect, x, y, width, height
+#  Polygon: poly, x1, y1, x2, y2, x3, y3, ...
+#   It will be implicitly closed
+
+base = ellipse, -165, -165, 330, 330
+base.0 = subtract, rect, -165, -165, 40, 330
+#base.1 = ... 

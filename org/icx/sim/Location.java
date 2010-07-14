@@ -54,8 +54,15 @@ public class Location implements Comparable<Location>, java.io.Serializable {
 	 * @param theta the angle
 	 */
 	public Location(double x, double y, double radius, double theta) {
-		this();
 		setX(x); setY(y); setVelocity(radius); setTheta(theta);
+	}
+	/**
+	 * Creates a location from another location.
+	 * 
+	 * @param other the other location
+	 */
+	public Location(Location other) {
+		this(other.x, other.y, other.r, other.t);
 	}
 	/**
 	 * Gets the velocity of this object.
@@ -147,7 +154,7 @@ public class Location implements Comparable<Location>, java.io.Serializable {
 		else return 0;
 	}
 	public String toString() {
-		return getClass().getCanonicalName() + "[x=" + x + ",y=" + y + ",vr=" + r +
-			",vt=" + t + "]";
+		return getClass().getCanonicalName() + "[x=" + x + ",y=" + y + ",mag=" + r +
+			",dir=" + t + "]";
 	}
 }

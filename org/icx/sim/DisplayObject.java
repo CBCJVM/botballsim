@@ -32,14 +32,17 @@ public class DisplayObject {
 	private Color tint;
 	private int setWidth;
 	private int setHeight;
+	private SimObject parent;
 
 	/**
 	 * Constructs an object that knows how to display an image. Looks for the
 	 * named file first in the jar file, then in the current directory.
 	 * 
+	 * @param owner the object to display
 	 * @param imageFilename name of file containing image, WITHOUT the extension
 	 */
-	public DisplayObject(String imageFilename) {
+	public DisplayObject(SimObject owner, String imageFilename) {
+		parent = owner;
 		tintedVersions = new HashMap<Color, Image>();
 		image = Simulator.getIcon(imageFilename).getImage();
 		tint = null;
@@ -102,9 +105,9 @@ public class DisplayObject {
 
 	// Square bounding box hit check for object
 	//  good only for GUI, use precision shapes on items and java.awt.Area for better detection.
-	public boolean hit(int x, int y) {
-		return Math.abs(x - location.getX()) < getWidth() / 2 &&
-			Math.abs(y - location.getY()) < getHeight() / 2;
+	public boolean hit(double x, double y) {
+		return Math.abs(x - location.getX()) < getWidth() * RobotConstants.PIXELS_TO_MM / 2.f &&
+			Math.abs(y - location.getY()) < getHeight() * RobotConstants.PIXELS_TO_MM / 2.f;
 	}
 
 	/**
@@ -142,6 +145,20 @@ public class DisplayObject {
 			location.getY() * RobotConstants.MM_TO_PIXELS);
 		g.rotate(location.getTheta());
 		g.drawImage(tinted, -width / 2, -height / 2, width, height, null);
+		g.dispose();
+	}
+
+	// Fills in the specified bounds shape
+	public void fill(Graphics2D g2) {
+		if (parent.getCollision() == null) return;
+		// draw image scaled, moved, and rotated
+		Graphics2D g = (Graphics2D) g2.create();
+		g.translate(location.getX() * RobotConstants.MM_TO_PIXELS,
+			location.getY() * RobotConstants.MM_TO_PIXELS);
+		g.rotate(location.getTheta());
+		g.scale(RobotConstants.MM_TO_PIXELS,
+			RobotConstants.MM_TO_PIXELS);
+		g.fill(parent.getCollision());
 		g.dispose();
 	}
 

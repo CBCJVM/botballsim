@@ -31,8 +31,8 @@ public class MotorComponent extends JComponent {
 
 	// Icons for power, position, and stop.
 	private static ImageIcon powerImg = Simulator.getIcon("power");
-	private static ImageIcon posImg = Simulator.getIcon("dest");
-	private static ImageIcon stopImg = Simulator.getIcon("pos");
+	private static ImageIcon posImg = Simulator.getIcon("pos");
+	private static ImageIcon stopImg = Simulator.getIcon("dest");
 	// Current power.
 	//  Integer.MIN_VALUE = "Off", Integer.MAX_VALUE = "On", -100 to 100 = value, else: "Hold"
 	private int power;

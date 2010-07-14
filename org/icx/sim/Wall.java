@@ -17,7 +17,7 @@
 
 package org.icx.sim;
 
-import java.awt.geom.Area;
+import java.awt.geom.*;
 
 /**
  * A class which represents a PVC wall.
@@ -50,6 +50,10 @@ public class Wall extends StaticObject {
 	private int length;
 	// PVC joiner direction
 	private int direction;
+	// The type of the game.
+	private int type;
+	// The collision box.
+	private Area collide;
 
 	/**
 	 * Creates a new static wall of the given type.
@@ -60,8 +64,10 @@ public class Wall extends StaticObject {
 	 */
 	public Wall(int type, int dir, int len) {
 		super(types[type]);
+		collide = null;
 		length = len;
 		direction = dir;
+		this.type = type;
 		updateSize();
 	}
 	/**
@@ -99,9 +105,18 @@ public class Wall extends StaticObject {
 		updateSize();
 	}
 	// Updates location information to match PVC dimensions
-	private void updateSize() {
-		obj.setHeight(length);
-		obj.setWidth(-1);
+	protected void updateSize() {
+		if (type == TYPE_PVC) {
+			obj.setHeight(length);
+			obj.setWidth(-1);
+			collide = createBoundingBox(5 * RobotConstants.PIXELS_TO_MM,
+				length * RobotConstants.PIXELS_TO_MM);
+		} else {
+			obj.setHeight(-1);
+			obj.setWidth(-1);
+			collide = createBoundingBox(5 * RobotConstants.PIXELS_TO_MM,
+				5 * RobotConstants.PIXELS_TO_MM);
+		}
 		Location loc = getLocation();
 		if (loc != null) loc.setTheta(Math.PI * direction / 2);
 	}
@@ -110,7 +125,14 @@ public class Wall extends StaticObject {
 		updateSize();
 	}
 	public Area getCollision() {
-		return createBoundingBox(getLocation(), obj.getSetWidth() * RobotConstants.PIXELS_TO_MM,
-			obj.getSetHeight() * RobotConstants.PIXELS_TO_MM);
+		return collide;
+	}
+	public Location hitDirection(SimObject hitObject) {
+		if (type != TYPE_PVC) return null;
+		Location loc = new Location(getLocation());
+		// slides along pipe
+		loc.setTheta(Math.PI * (1 + direction) / 2);
+		loc.setVelocity(1);
+		return loc;
 	}
 }

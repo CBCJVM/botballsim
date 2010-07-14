@@ -28,21 +28,24 @@ import java.util.regex.*;
  */
 public class CodeParser {
 	// Removes C function prototypes in generated file
-	public static final Pattern PROTOTYPE = Pattern.compile("[a-z][a-z_0-9]* [a-z][a-z_0-9]* \\(.*\\) ;",
+	public static final Pattern PROTOTYPE = Pattern.compile("[a-z][a-z_0-9]* [a-z][a-z_0-9]* \\(.*\\)\\s*?;",
 		Pattern.DOTALL | Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
 	/**
 	 * Reads data from the given reader and writes to Program.java for running.
 	 * 
+	 * @param source the path where the code file was obtained. If null, #include and #use
+	 *  will die with an exception if encountered.
 	 * @param r the code data source
 	 * @throws Exception if something goes wrong:
 	 * - I/O
+	 * - out of memory (really big file?)
 	 * - some types of grievous syntax errors
 	 * - binary file
 	 * - ...
 	 */
-	public static void syntax(Reader r) throws Exception {
-		List<Token> ll = parse(r);
+	public static void syntax(File source, Reader r) throws Exception {
+		List<Token> ll = parse(source, r);
 		macroExpand(ll);
 		writeData(doFinal(ll), "Program.java");
 	}
@@ -75,7 +78,7 @@ public class CodeParser {
 	}
 
 	// Breaks down input into tokens
-	private static List<Token> parse(Reader r) throws Exception {
+	private static List<Token> parse(File file, Reader r) throws Exception {
 		// handles comments and strings for us
 		StreamTokenizer str = new StreamTokenizer(r);
 		str.resetSyntax();
@@ -90,7 +93,7 @@ public class CodeParser {
 		str.ordinaryChar(';');
 		str.quoteChar('"');
 		int type = 0;
-		boolean pound = false; String intern = null;
+		boolean pound = false, include = false; String intern = null;
 		List<Token> ll = new LinkedList<Token>();
 		// iterate through tokens
 		while (true) {
@@ -102,7 +105,9 @@ public class CodeParser {
 				if (str.sval.startsWith("#") && !pound) {
 					pound = true;
 					intern = "";
-					ll.add(new Token(StreamTokenizer.TT_WORD, str.sval, '#'));
+					include = str.sval.equals("#include") || str.sval.equals("#use");
+					if (!include)
+						ll.add(new Token(StreamTokenizer.TT_WORD, str.sval, '#'));
 				} else if (pound)
 					// pre processor value
 					intern += str.sval + " ";
@@ -114,17 +119,38 @@ public class CodeParser {
 					ll.add(new Token(StreamTokenizer.TT_EOL, "\n", '\n'));
 				else {
 					// close pre processor
-					ll.add(new Token(StreamTokenizer.TT_WORD, intern.trim(), '\u0000'));
-					pound = false;
+					if (include) {
+						// find and insert the specified file here
+						if (file == null)
+							throw new Exception("Cannot use #include or #use here.");
+						String path = intern.trim();
+						if (path.length() < 2)
+							throw new Exception("No file given to #include.");
+						if (path.startsWith("\"") && path.endsWith("\""))
+							path = path.substring(1, path.length() - 1);
+						File toInc = new File(file.getAbsoluteFile().getParentFile(), path);
+						try {
+							FileReader r2 = new FileReader(toInc);
+							ll.addAll(parse(toInc, r2));
+							r2.close();
+						} catch (IOException e) {
+							throw new Exception("Cannot include " + path + ": File not found.", e);
+						}
+					} else
+						ll.add(new Token(StreamTokenizer.TT_WORD, intern.trim(), '\u0000'));
+					include = pound = false;
 					intern = null;
 					ll.add(new Token(StreamTokenizer.TT_EOL, "\n", '\n'));
 				}
 				break;
 			default:
 				// just add item to the list
-				if (pound)
-					intern += (char)type + " ";
-				else
+				if (pound) {
+					if (type == '"' || type == '\'')
+						intern += (char)type + str.sval + (char)type + " ";
+					else
+						intern += (char)type + " ";
+				} else
 					ll.add(new Token(type, str.sval, (char)type));
 			}
 		}
@@ -137,7 +163,7 @@ public class CodeParser {
 	}
 
 	// Expands macros in the code.
-	//  TODO support for #define f(x) -2*x*x + 3*x - 5
+	//  TODO support for arguments, i.e. #define f(x) -2*x*x + 3*x - 5
 	private static void macroExpand(List<Token> ll) throws Exception {
 		Map<String, List<Token>> macro = new HashMap<String, List<Token>>(32);
 		// type conversions
@@ -167,20 +193,17 @@ public class CodeParser {
 							// resolve macro and add to the table
 							s = t.sval;
 							macro.put(s.substring(0, index).trim(),
-								parse(new StringReader(s.substring(index + 1))));
+								parse(null, new StringReader(s.substring(index + 1))));
 							it.remove();
 							// clean off junked directive
 							it.previous();
 							it.remove();
-						} else if ((s.equals("#include") || s.equals("#use")) && index < 0)
-							// TODO properly include files
-							throw new UnsupportedOperationException("include not implemented");
-						else
-							throw new Exception("not a supported preprocessor type");
+						} else
+							throw new Exception("Not a supported preprocessor type.");
 					} else
-						throw new Exception("invalid preprocessor argument");
+						throw new Exception("Invalid preprocessor argument.");
 				} else
-					throw new Exception("preprocessor missing argument");
+					throw new Exception("Preprocessor missing argument.");
 		}
 		// rewind and replace
 		it = ll.listIterator();

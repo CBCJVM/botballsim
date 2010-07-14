@@ -28,17 +28,15 @@ public abstract class SimObject {
 	/**
 	 * Creates a bounding box collision model for the object.
 	 * 
-	 * @param center the center of the object
 	 * @param width the width in mm
 	 * @param height the height in mm
 	 * @return the bounding box
 	 */
-	public Area createBoundingBox(Location center, float width, float height) {
-		float x = (float)center.getX(), y = (float)center.getY();
-		Rectangle2D bounds = new Rectangle2D.Float(x - width / 2, y - width / 2, width, height);
+	public static Area createBoundingBox(float width, float height) {
+		Rectangle2D bounds = new Rectangle2D.Float(width / -2.f,
+			height / -2.f, width, height);
 		// inefficient! suggestions?
 		Area shape = new Area(bounds);
-		shape.transform(AffineTransform.getRotateInstance(center.getTheta(), x, y));
 		return shape;
 	}
 	/**
@@ -56,7 +54,7 @@ public abstract class SimObject {
 	 * @param image the object image
 	 */
 	public SimObject(String image) {
-		obj = new DisplayObject(image);
+		obj = new DisplayObject(this, image);
 	}
 
 	/**
@@ -93,7 +91,7 @@ public abstract class SimObject {
 	 */
 	// Note: reinstantiates DisplayObject, cache frequently used images
 	public void setImage(String image) {
-		obj = new DisplayObject(image);
+		obj = new DisplayObject(this, image);
 	}
 
 	/**
@@ -120,4 +118,31 @@ public abstract class SimObject {
 	 * @return a shape for collision
 	 */
 	public abstract Area getCollision();
+
+	/**
+	 * For collisions, many objects have a directional vector, so that robots will
+	 *  properly slide along it. The vector must have <b>unit length</b>.
+	 *  Returning null will cause the object to halt colliding bots.
+	 * 
+	 * @param hitObject the simulation object that is colliding
+	 * @return the vector parallel to sliding direction, or null if not applicable
+	 */
+	public Location hitDirection(SimObject hitObject) {
+		return null;
+	}
+
+	/**
+	 * Gets the transformed collision model.
+	 * 
+	 * @return the collision model ready for checking
+	 */
+	public Area getTransformedCollision() {
+		Area test = new Area(getCollision());
+		Location loc = getLocation();
+		test.transform(AffineTransform.getRotateInstance(
+			loc.getTheta()));
+		test.transform(AffineTransform.getTranslateInstance(
+			loc.getX(), loc.getY()));
+		return test;
+	}
 }

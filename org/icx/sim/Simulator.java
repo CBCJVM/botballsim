@@ -84,13 +84,13 @@ public class Simulator extends JFrame implements Runnable {
 		setupUI();
 		playIcon = getIcon("play");
 		pauseIcon = getIcon("pause");
-		pause = true;
 		str = new ClearableStringWriter();
 		lcdWriter = new PrintWriter(str);
 		robots = new LinkedList<SimRobot>();
 		items = new ArrayList<SimObject>(100);
-		setPP();
+		setPP(true);
 	}
+
 	/**
 	 * Gets the LCD writer.
 	 * 
@@ -99,6 +99,23 @@ public class Simulator extends JFrame implements Runnable {
 	public PrintWriter getLCDWriter() {
 		return lcdWriter;
 	}
+
+	/**
+	 * Enables analog type changes.
+	 */
+	private void enableAnalogs() {
+		for (int i = 0; i < analogs.length; i++)
+			analogs[i].enableType();
+	}
+
+	/**
+	 * Disables analog type changes.
+	 */
+	private void disableAnalogs() {
+		for (int i = 0; i < analogs.length; i++)
+			analogs[i].disableType();
+	}
+
 	/**
 	 * Prints the text to the LCD, and auto flushes.
 	 * 
@@ -107,6 +124,7 @@ public class Simulator extends JFrame implements Runnable {
 	public synchronized void print(String text) {
 		print(text, true);
 	}
+
 	/**
 	 * Prints the text to the LCD, possibly refreshing.
 	 * 
@@ -117,6 +135,7 @@ public class Simulator extends JFrame implements Runnable {
 		lcdWriter.print(text);
 		if (flush) refreshLCD();
 	}
+
 	/**
 	 * Refreshes the LCD screen.
 	 */
@@ -125,12 +144,14 @@ public class Simulator extends JFrame implements Runnable {
 		try {
 			lcd.setCaretPosition(str.length());
 		} catch (Exception e) {
-			// TODO identify what causes this exception and fix it
-			//  It is nonfatal and appears not harmful to execution.
-			System.out.println("Refresh LCD: caret bug");
-			e.printStackTrace(System.out);
+			// This exception was caused by a sync problem in SimRobot.java
+			//  Basically, printf() was using format() and then refresh(), but
+			//  multi threading printf() could cause bad positions.
+			//  That has been fixed, but if it reappears, it will show up here.
+			e.printStackTrace();
 		}
 	}
+
 	/**
 	 * Clears the LCD screen.
 	 */
@@ -138,6 +159,7 @@ public class Simulator extends JFrame implements Runnable {
 		lcd.setText("");
 		str.clear();
 	}
+
 	// Sets up the user interface
 	private void setupUI() {
 		events = new EventListener();
@@ -149,7 +171,7 @@ public class Simulator extends JFrame implements Runnable {
 		// initialize
 		motors = new MotorComponent[4];
 		servos = new MotorComponent[4];
-		gc = new GraphicsComponent(3000, 3000);
+		gc = new GraphicsComponent(this, 3000, 3000);
 		gc.addKeyListener(events);
 		Container c = getContentPane();
 		c.setLayout(new BorderLayout());
@@ -291,8 +313,10 @@ public class Simulator extends JFrame implements Runnable {
 		// accelerometer?
 		analogs[8] = new AnalogSlider("AX");
 		analogs[8].setValueType(2);
+		analogs[8].setValue(512);
 		analogs[9] = new AnalogSlider("AY");
 		analogs[9].setValueType(2);
+		analogs[9].setValue(512);
 		analogs[10] = new AnalogSlider("AZ");
 		analogs[10].setValue(512 + 128);
 		analogs[10].setValueType(2);
@@ -320,6 +344,7 @@ public class Simulator extends JFrame implements Runnable {
 		jf.setFileHidingEnabled(true);
 		jf.setCurrentDirectory(new File("."));
 	}
+
 	/**
 	 * Gets the graphics component for display.
 	 * 
@@ -328,6 +353,7 @@ public class Simulator extends JFrame implements Runnable {
 	public GraphicsComponent getGraphicsComponent() {
 		return gc;
 	}
+
 	/**
 	 * Starts the program.
 	 */
@@ -337,14 +363,16 @@ public class Simulator extends JFrame implements Runnable {
 		requestFocus();
 		new GraphicsThread().start();
 	}
+
 	/**
-	 * Returns whether the simulator is paused
+	 * Returns whether the simulator is paused.
 	 * 
 	 * @return pause status
 	 */
 	public boolean isPaused() {
 		return pause;
 	}
+
 	/**
 	 * Disables all motors.
 	 *  Meant for reset. Do not change BotballProgram.ao() to call this!
@@ -355,6 +383,7 @@ public class Simulator extends JFrame implements Runnable {
 			motors[i].setDest(Long.MAX_VALUE);
 		}
 	}
+
 	/**
 	 * Enables all servos.
 	 */
@@ -362,6 +391,7 @@ public class Simulator extends JFrame implements Runnable {
 		for (int i = 0; i < 4; i++)
 			servos[i].servoEnable();
 	}
+
 	/**
 	 * Disables all servos.
 	 */
@@ -369,6 +399,7 @@ public class Simulator extends JFrame implements Runnable {
 		for (int i = 0; i < 4; i++)
 			servos[i].servoDisable();
 	}
+
 	/**
 	 * Gets the black button status.
 	 * 
@@ -377,6 +408,7 @@ public class Simulator extends JFrame implements Runnable {
 	public boolean getBlackButton() {
 		return buttons[6].isSelected();
 	}
+
 	/**
 	 * Adds an object to the simulation (wall, static, etc.)
 	 * 
@@ -386,8 +418,10 @@ public class Simulator extends JFrame implements Runnable {
 		items.add(obj);
 		gc.add(obj);
 	}
+
 	/**
 	 * Deletes an object from the simulation (wall, static, etc.)
+	 *  No delete robot with this method!!!
 	 * 
 	 * @param obj the object to remove
 	 */
@@ -395,6 +429,7 @@ public class Simulator extends JFrame implements Runnable {
 		items.remove(obj);
 		gc.remove(obj);
 	}
+
 	/**
 	 * Returns an XBC style button mask of controller buttons.
 	 * 
@@ -410,6 +445,7 @@ public class Simulator extends JFrame implements Runnable {
 		if (buttons[5].isSelected()) mask |= BotballProgram.RIGHT_BUTTON;
 		return mask;
 	}
+
 	/**
 	 * Gets the specified servo.
 	 * 
@@ -419,6 +455,7 @@ public class Simulator extends JFrame implements Runnable {
 	public MotorComponent getServo(int port) {
 		return servos[port];
 	}
+
 	/**
 	 * Gets the specified motor.
 	 * 
@@ -428,6 +465,27 @@ public class Simulator extends JFrame implements Runnable {
 	public MotorComponent getMotor(int port) {
 		return motors[port];
 	}
+
+	/**
+	 * Gets the specified analog slider.
+	 * 
+	 * @param port the analog port to fetch
+	 * @return the value
+	 */
+	public AnalogSlider getAnalog(int port) {
+		return analogs[port];
+	}
+
+	/**
+	 * Gets the specified digital button.
+	 * 
+	 * @param port the digital port to fetch
+	 * @return the value
+	 */
+	public LockingButton getDigital(int port) {
+		return digitals[port - 8];
+	}
+
 	// Loads the given icon from the JAR/file system
 	protected static final ImageIcon getIcon(String name) {
 		URL url = Simulator.class.getResource("/images/" + name + imageExtension);
@@ -462,23 +520,28 @@ public class Simulator extends JFrame implements Runnable {
 	 * @param message the error message
 	 */
 	public static final void die(String message) {
-		JOptionPane.showMessageDialog(null, "Could not read information from robots.txt",
-			"Error", JOptionPane.ERROR_MESSAGE);
+		JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
 		System.exit(1);
 	}
+
 	// Sets the play/pause status button appropriately
-	protected void setPP() {
-		if (pause)
+	protected void setPP(boolean newStatus) {
+		if (newStatus) {
 			pp.setIcon(playIcon);
-		else
+			enableAnalogs();
+		} else {
 			pp.setIcon(pauseIcon);
+			disableAnalogs();
+		}
 		// manage timing
 		if (instance != null && instance._isRunning())
-			if (pause)
+			if (newStatus)
 				instance._stopTiming();
 			else
 				instance._startTiming();
+		pause = newStatus;
 	}
+
 	/**
 	 * Adds a robot to the simulation. Currently, only the first robot will ever
 	 *  be used (single support). Fixing this wil not be overly difficult, but
@@ -490,6 +553,7 @@ public class Simulator extends JFrame implements Runnable {
 		gc.add(r);
 		robots.add(r);
 	}
+
 	/**
 	 * Removes a robot from the simulation.
 	 * 
@@ -499,14 +563,18 @@ public class Simulator extends JFrame implements Runnable {
 		gc.remove(r);
 		robots.remove(r);
 	}
-	// Changes the tint of all robots
+
+	// Changes the tint of all robots.
 	protected void tintAllRobots(Color color) {
 		for (SimRobot r : robots)
 			r.setTint(color);
 		gc.repaint();
 	}
-	// Loads code into the simulator
+
+	// Loads code into the simulator.
 	private void loadCode() {
+		if (god.isSelected()) return;
+		eStop();
 		if (jf.showDialog(this, "Load") != JFileChooser.APPROVE_OPTION) return;
 		File what = jf.getSelectedFile();
 		if (what == null || !what.canRead()) return;
@@ -519,13 +587,14 @@ public class Simulator extends JFrame implements Runnable {
 		compile.setName("User Code Compiler");
 		compile.start();
 	}
+
 	/**
 	 * Pauses the simulator.
 	 */
 	public synchronized void pause() {
-		pause = true;
-		setPP();
+		setPP(true);
 	}
+
 	/**
 	 * Emergency stops the robot and program.
 	 */
@@ -536,20 +605,24 @@ public class Simulator extends JFrame implements Runnable {
 			print("Program Stopped!\n");
 		}
 		// set pause
-		pause = true;
-		setPP();
+		setPP(true);
 		// kill motors/servos
 		disableServos();
 		ao();
+		if (instance != null && instance.gc_mode != 0)
+			instance.create_disconnect();
 		// can't hurt
 		for (SimRobot bot : robots)
 			bot.setSpeeds(0, 0);
 	}
+
 	/**
 	 * Runs or pauses the program.
 	 */
 	public void play() {
-		pause = !pause;
+		if (instance == null) return;
+		// update status
+		setPP(!pause);
 		if (!instance._isRunning() && !pause) {
 			clearLCD();
 			// run user code
@@ -558,9 +631,8 @@ public class Simulator extends JFrame implements Runnable {
 			pRun.setName("User Code Run");
 			pRun.start();
 		}
-		// update status
-		setPP();
 	}
+
 	/**
 	 * Changes the zoom.
 	 * 
@@ -572,31 +644,29 @@ public class Simulator extends JFrame implements Runnable {
 		gc.setZoom(zoom);
 		validate();
 	}
+
 	/**
 	 * Activates or deactives the Hand of God button.
 	 */
 	public void handOfGod() {
 		if (god.isSelected()) {
-			pause = wasPaused;
-			setPP();
+			setPP(wasPaused);
 			// turn off hand of god
 			pp.setEnabled(true);
 			tintAllRobots(null);
-			gc.renderHandles(true);
 			god.setSelected(false);
 			god.setText("Hand of God");
 		} else {
 			wasPaused = pause;
-			pause = true;
 			// turn on hand of god
-			setPP();
+			setPP(true);
 			pp.setEnabled(false);
 			tintAllRobots(Color.YELLOW);
-			gc.renderHandles(false);
 			god.setSelected(true);
 			god.setText("Resume Trial");
 		}
 	}
+
 	/**
 	 * Compiles or runs user code.
 	 */
@@ -606,7 +676,7 @@ public class Simulator extends JFrame implements Runnable {
 			pp.setEnabled(false);
 			// call up code parsing
 			Reader r = new FileReader(jf.getSelectedFile());
-			CodeParser.syntax(r);
+			CodeParser.syntax(jf.getSelectedFile(), r);
 			r.close();
 			// compile user code
 			int res = com.sun.tools.javac.Main.compile(new String[] { "Program.java" },
@@ -626,6 +696,8 @@ public class Simulator extends JFrame implements Runnable {
 			new File("Program.class").delete();
 		} catch (Exception e) {
 			// oh no!
+			if (e.getMessage() != null)
+				print(e.getMessage() + "\n");
 			print("Compile failed.\n");
 			instance = null;
 			pp.setEnabled(true);
@@ -644,25 +716,24 @@ public class Simulator extends JFrame implements Runnable {
 			long lastRepaint = 0L, lastMove = 0L, time;
 			while (true) {
 				time = System.currentTimeMillis();
-				if (time - lastRepaint > 15L) {
-					// handle 15ms tasks
+				if (time - lastRepaint >= 33L) {
+					// handle 33ms tasks
 					lastRepaint = time;
 					gc.repaint();
 					// change icon when program ends
-					if (instance != null && !instance._isRunning() && !pause) {
-						pause = true;
-						setPP();
-					}
+					if (instance != null && !instance._isRunning() && !pause)
+						setPP(true);
 				}
-				if (time - lastMove > 5L) {
-					// handle 5ms tasks (move robot)
+				if (time - lastMove >= 10L) {
+					long dt = time - lastMove;
+					// handle 10ms tasks (move robot)
 					if (!isPaused())
 						for (SimRobot bot : robots)
-							bot.move(lastMove - time);
+							bot.move(dt, bot.collide(items, dt));
 					lastMove = time;
 				}
 				try {
-					Thread.sleep(1L);
+					Thread.sleep(2L);
 				} catch (Exception e) {
 					return;
 				}
@@ -677,20 +748,31 @@ public class Simulator extends JFrame implements Runnable {
 			MouseMotionListener, KeyListener {
 		// The robot which is being moved.
 		private SimRobot dragging;
+		// Whether bot is being spun.
+		private boolean spin;
 
 		public void mouseMoved(MouseEvent e) { }
 		public void mouseDragged(MouseEvent e) {
 			int x = e.getX(), y = e.getY();
 			if (dragging != null) {
-				// Change the location of object being moved
 				Location location = dragging.getLocation();
-				location.setX(x);
-				location.setY(y);
+				double gx = gc.invTransform(x * RobotConstants.PIXELS_TO_MM);
+				double gy = gc.invTransform(y * RobotConstants.PIXELS_TO_MM);
+				if (spin)
+					// Change rotation of object being moved
+					location.setTheta(Math.toRadians(MathMore.atan2(location.getY() - gy,
+						location.getX() - gx)));
+				else {
+					// Change the location of object being moved
+					location.setX(gx);
+					location.setY(gy);
+				}
 				gc.repaint();
 			}
 		}
 		public void mousePressed(MouseEvent e) {
-			int x = e.getX(), y = e.getY();
+			int x = Math.round(gc.invTransform(RobotConstants.PIXELS_TO_MM * e.getX())),
+				y = Math.round(gc.invTransform(RobotConstants.PIXELS_TO_MM * e.getY()));
 			dragging = null;
 			if (god.isSelected()) {
 				// look for a robot to pick up
@@ -699,11 +781,14 @@ public class Simulator extends JFrame implements Runnable {
 						dragging = r;
 						break;
 					}
+				if (dragging != null)
+					spin = e.isControlDown() || e.getButton() != MouseEvent.BUTTON1;
 			}
 		}
 		public void mouseReleased(MouseEvent e) {
 			// drop the robot
 			dragging = null;
+			spin = false;
 		}
 		public void actionPerformed(ActionEvent e) {
 			String cmd = e.getActionCommand();
@@ -788,6 +873,8 @@ public class Simulator extends JFrame implements Runnable {
 			else if (e.getKeyCode() == KeyEvent.VK_MINUS ||
 				e.getKeyCode() == KeyEvent.VK_UNDERSCORE)
 				zoom(-1);
+			else if (e.getKeyCode() == KeyEvent.VK_C)
+				gc.renderCollision(true);
 		}
 		public void keyTyped(KeyEvent e) {}
 	}

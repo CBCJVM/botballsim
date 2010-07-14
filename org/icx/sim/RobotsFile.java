@@ -87,6 +87,7 @@ public class RobotsFile {
 	/**
 	 * Gets the specified parameter as a string.
 	 * 
+	 * @param name the parameter name
 	 * @return its value as a string
 	 */
 	public static String getParameter(String name) {
@@ -96,6 +97,31 @@ public class RobotsFile {
 			Simulator.die("In robots.txt, parameter " + name + " must be defined.");
 		return prop;
 	}
+	/**
+	 * Gets the specified parameter as a string, with the specified default.
+	 * 
+	 * @param name the parameter name
+	 * @param def the default value
+	 * @return its value as a string
+	 */
+	public static String getParameter(String name, String def) {
+		if (data == null) readFile();
+		String prop = data.getProperty(name, def).trim();
+		if (prop.length() < 1) return def;
+		return prop;
+	}
+	/**
+	 * Fetches an array of enabled robot designs.
+	 * 
+	 * @return the available robots
+	 */
+	public static String[] getEnabled() {
+		StringTokenizer bots = new StringTokenizer(getParameter("enable"), ",");
+		String[] ret = new String[bots.countTokens()];
+		for (int i = 0; i < ret.length && bots.hasMoreTokens(); i++)
+			ret[i] = bots.nextToken().trim();
+		return ret;
+	}
 	// Reads in the robot data.
 	private static void readFile() {
 		try {
@@ -104,7 +130,7 @@ public class RobotsFile {
 			data.load(is);
 			is.close();
 		} catch (Exception e) {
-			Simulator.die("Could not read robot parameters.");
+			Simulator.die("Could not read information from robots.txt.");
 		}
 	}
 

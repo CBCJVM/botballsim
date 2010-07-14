@@ -22,8 +22,6 @@ import java.util.Arrays;
 /**
  * A class that contains optimized-time implementations of some
  *  functions in java.lang.Math.
- * 
- * @author Stephen Carlson
  */
 public final class MathMore {
 	/**

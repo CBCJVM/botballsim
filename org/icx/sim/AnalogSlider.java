@@ -91,6 +91,18 @@ public class AnalogSlider extends JPanel {
 		types.setSelectedIndex(type);
 	}
 	/**
+	 * Disables the type selection drop down while running.
+	 */
+	public void disableType() {
+		types.setEnabled(false);
+	}
+	/**
+	 * Enables the type selection drop down while paused.
+	 */
+	public void enableType() {
+		types.setEnabled(true);
+	}
+	/**
 	 * Gets the value of the slider.
 	 * 
 	 * @return the slider value
