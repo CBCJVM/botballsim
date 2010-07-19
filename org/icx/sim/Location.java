@@ -20,7 +20,7 @@ package org.icx.sim;
 /**
  * A class representing a location and vector (position and direction).
  */
-public class Location implements Comparable<Location>, java.io.Serializable {
+public class Location implements java.io.Serializable {
 	public static final long serialVersionUID = -789234167023416723L;
 
 	private double x;    // The x position.
@@ -145,13 +145,6 @@ public class Location implements Comparable<Location>, java.io.Serializable {
 	// Tests this object with another for equality.
 	public boolean equals(Location l) {
 		return (l.x == x && l.y == y && l.r == r && l.t == t);
-	}
-	public int compareTo(Location l) {
-		if (!MathMore.doubleEquals(l.x, x)) return (int)Math.signum(l.x - x);
-		else if (!MathMore.doubleEquals(l.y, y)) return (int)Math.signum(l.y - y);
-		else if (!MathMore.doubleEquals(l.r, r)) return (int)Math.signum(l.r - r);
-		else if (!MathMore.doubleEquals(l.t, t)) return (int)Math.signum(l.t - t);
-		else return 0;
 	}
 	public String toString() {
 		return getClass().getCanonicalName() + "[x=" + x + ",y=" + y + ",mag=" + r +

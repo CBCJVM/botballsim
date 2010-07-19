@@ -46,7 +46,8 @@ public class DisplayObject {
 		tintedVersions = new HashMap<Color, Image>();
 		image = Simulator.getIcon(imageFilename).getImage();
 		tint = null;
-		setWidth = -1; setWidth = -1;
+		// whoops!
+		setHeight = -1; setWidth = -1;
 	}
 
 	/**
@@ -145,6 +146,7 @@ public class DisplayObject {
 			location.getY() * RobotConstants.MM_TO_PIXELS);
 		g.rotate(location.getTheta());
 		g.drawImage(tinted, -width / 2, -height / 2, width, height, null);
+		parent.paintComponent(g);
 		g.dispose();
 	}
 

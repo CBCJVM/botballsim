@@ -17,6 +17,8 @@
 
 package org.icx.sim;
 
+import java.awt.*;
+
 /**
  * Tests the simulator.
  * 
@@ -25,15 +27,25 @@ package org.icx.sim;
 public class SimTest {
 	// Tests the simulator with the board in board.txt.
 	public static void main(String[] args) {
+		// really?
+		if (GraphicsEnvironment.isHeadless()) {
+			System.err.println("This is a graphical simulator which requires a display.");
+			System.err.println(" If you are trying to run it on a terminal client, make");
+			System.err.println(" sure that X11 forwarding is enabled and the DISPLAY");
+			System.err.println(" environment variable is set.");
+			System.exit(1);
+		}
 		Simulator s = new Simulator();
+		// read board from board.txt
 		BoardReader.loadBoard(s, "board.txt");
 		s.start();
-		// for now, support cbc and create
+		// allow choice of bots from robots.txt
 		String type = BoardReader.selectRobot(s);
 		if (type == null) System.exit(0);
 		SimRobot r = new SimRobot(s, type);
-		// drop the robot at 50 cm from the corner
-		r.setLocation(new Location(600, 600));
+		// configure start at 50 cm from the corner
+		//  (no support for load/save configuration until it works)
+		r.getSetup().setStart(new Location(600, 600));
 		s.addRobot(r);
 	}
 }

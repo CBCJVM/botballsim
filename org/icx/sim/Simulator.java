@@ -17,14 +17,11 @@
 
 package org.icx.sim;
 
-import java.util.*;
 import java.io.*;
-import java.util.List;
 import javax.swing.*;
-
 import java.awt.event.*;
 import java.awt.*;
-import java.net.URL;
+import java.net.*;
 
 /**
  * The program that displays the simulation. 
@@ -38,14 +35,14 @@ public class Simulator extends JFrame implements Runnable {
 
 	// The place where everything is displayed.
 	private GraphicsComponent gc;
-	// All robots (currently only one).
-	private LinkedList<SimRobot> robots;
 	// All simulated items excluding robots.
-	private List<SimObject> items;
+	private Environment env;
 	// The play/pause button.
 	private JButton pp;
 	// The Hand of God button.
 	private JButton god;
+	// Starting Light.
+	private JButton light;
 	// Whether the simulator is paused.
 	private boolean pause;
 	// When using Hand of God, indicates whether program was paused before.
@@ -73,8 +70,14 @@ public class Simulator extends JFrame implements Runnable {
 	// Motors and servos as displayed on screen
 	private MotorComponent[] motors;
 	private MotorComponent[] servos;
+	// Loader that creates the Botball program
+	private ICClassLoader icLoader;
 	// The current program (currently only one)
 	private BotballProgram instance;
+	// Sensor configuration window
+	private JDialog sensorSetup;
+	// The names of the installed sensors on the screen
+	private JLabel[] sensorNames;
 
 	/**
 	 * Creates a Simulator but does not start it.
@@ -82,12 +85,12 @@ public class Simulator extends JFrame implements Runnable {
 	public Simulator() {
 		super("Botball Simulator");
 		setupUI();
+		icLoader = new ICClassLoader();
 		playIcon = getIcon("play");
 		pauseIcon = getIcon("pause");
 		str = new ClearableStringWriter();
 		lcdWriter = new PrintWriter(str);
-		robots = new LinkedList<SimRobot>();
-		items = new ArrayList<SimObject>(100);
+		env = new Environment();
 		setPP(true);
 	}
 
@@ -137,6 +140,15 @@ public class Simulator extends JFrame implements Runnable {
 	}
 
 	/**
+	 * Gets the simulation environment.
+	 * 
+	 * @return the environment of robots and objects
+	 */
+	public Environment getEnvironment() {
+		return env;
+	}
+
+	/**
 	 * Refreshes the LCD screen.
 	 */
 	public synchronized void refreshLCD() {
@@ -162,22 +174,101 @@ public class Simulator extends JFrame implements Runnable {
 
 	// Sets up the user interface
 	private void setupUI() {
-		events = new EventListener();
+		setupInitUI();
+		setupTopUI();
+		setupMiddleUI();
+		setupRightUI();
+		setupSensorUI();
+		setupExtraUI();
+	}
+
+	// Performs UI initialization.
+	private void setupInitUI() {
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (Exception e) { }
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		addKeyListener(events);
 		// initialize
+		events = new EventListener();
 		motors = new MotorComponent[4];
 		servos = new MotorComponent[4];
 		gc = new GraphicsComponent(this, 3000, 3000);
 		gc.addKeyListener(events);
-		Container c = getContentPane();
-		c.setLayout(new BorderLayout());
-		JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+		getContentPane().setLayout(new BorderLayout());
+	}
+
+	// Sets up extra extensions to the UI.
+	private void setupExtraUI() {
+		// final words
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setSize(1000, 750);
+		addKeyListener(events);
+		gc.addMouseListener(events);
+		gc.addMouseMotionListener(events);
+		// load code dialog
+		jf = new JFileChooser();
+		jf.setDialogType(JFileChooser.OPEN_DIALOG);
+		jf.setDialogTitle("Select KISS-C/IC File to Load");
+		jf.setFileFilter(new IKCFileFilter());
+		jf.setFileHidingEnabled(true);
+		jf.setCurrentDirectory(new File("."));
+	}
+
+	// Initializes sensor extensions.
+	private void setupSensorUI() {
+		sensorSetup = new JDialog(this, "Sensor Setup", true);
+		sensorSetup.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+		sensorSetup.setResizable(false);
+		// create 15 row dialog box
+		Container c = sensorSetup.getContentPane();
+		c.setLayout(new VerticalFlow(true));
+		JLabel name; JButton setup; JComponent across;
+		sensorNames = new JLabel[15];
+		c.add(Box.createVerticalStrut(2));
+		for (int i = 0; i < sensorNames.length; i++) {
+			// row label
+			across = new Box(BoxLayout.X_AXIS);
+			across.add(Box.createHorizontalStrut(2));
+			name = new JLabel(i + ": ");
+			name.setFont(name.getFont().deriveFont(Font.BOLD, 14.f));
+			across.add(name);
+			// make array of sensors
+			name = new JLabel("No Sensor");
+			name.setFont(name.getFont().deriveFont(14.f));
+			sensorNames[i] = name;
+			across.add(name);
+			across.add(Box.createHorizontalGlue());
+			// configure button
+			setup = new JButton("Configure...");
+			setup.setActionCommand("conf" + i);
+			setup.addActionListener(events);
+			setup.setFocusable(false);
+			across.add(setup);
+			across.add(Box.createHorizontalStrut(2));
+			c.add(across);
+			c.add(Box.createVerticalStrut(2));
+		}
+		sensorSetup.pack();
+		sensorSetup.setSize(400, sensorSetup.getHeight());
+	}
+
+	// Updates the sensors in the dialog box to reflect changes.
+	protected void updateSensors() {
+		SimRobot bot = env.getFirstRobot();
+		Sensor[] sensors = bot.getSetup().getSensors();
+		for (int i = 0; i < sensors.length; i++) {
+			// change names
+			if (sensors[i] == null)
+				sensorNames[i].setText("No Sensor");
+			else
+				sensorNames[i].setText(sensors[i].getName());
+		}
+	}
+
+	// Initializes the top of the window's UI.
+	private void setupTopUI() {
+		JComponent controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
 		JComponent vert = new Box(BoxLayout.Y_AXIS);
-		JPanel across = new JPanel(new FlowLayout(FlowLayout.CENTER, 3, 3));
+		JComponent across = new JPanel(new FlowLayout(FlowLayout.CENTER, 3, 3));
 		// play/pause button
 		pp = new JButton(playIcon);
 		pp.setBorder(BorderFactory.createEmptyBorder());
@@ -230,16 +321,48 @@ public class Simulator extends JFrame implements Runnable {
 			controls.add(servos[i]);
 			if (i < 3) controls.add(Box.createHorizontalStrut(5));
 		}
+		getContentPane().add(controls, BorderLayout.NORTH);
+	}
+
+	// Initializes the simulation area and controls below the main window.
+	private void setupMiddleUI() {
 		// graphics component is scrollable
+		JComponent center = new JPanel(new BorderLayout(3, 3));
 		JScrollPane p = new JScrollPane(gc);
 		p.setBackground(Color.WHITE);
 		p.setBorder(BorderFactory.createEmptyBorder());
-		c.add(controls, BorderLayout.NORTH);
-		c.add(p, BorderLayout.CENTER);
-		vert = new Box(BoxLayout.Y_AXIS);
+		JComponent vert = new Box(BoxLayout.Y_AXIS);
+		// start light, zoom, set up sensors
+		JComponent controls = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		JButton setUp = new JButton("Set up Sensors");
+		setUp.setFocusable(false);
+		setUp.setActionCommand("setup");
+		setUp.addActionListener(events);
+		controls.add(setUp);
+		controls.add(Box.createHorizontalStrut(20));
+		light = new JButton("Start Light");
+		light.setFocusable(false);
+		light.setActionCommand("light");
+		light.addActionListener(events);
+		controls.add(light);
+		controls.add(Box.createHorizontalStrut(20));
+		JLabel lbl = new JLabel("Zoom");
+		controls.add(lbl);
+		// zoom in and out
+		JButton zIn = new JButton("+");
+		zIn.setFocusable(false);
+		zIn.setActionCommand("in");
+		zIn.addActionListener(events);
+		controls.add(zIn);
+		JButton zOut = new JButton("-");
+		zOut.setFocusable(false);
+		zOut.setActionCommand("out");
+		zOut.addActionListener(events);
+		controls.add(zOut);
+		vert.add(controls);
 		// controls for buttons and digitals
 		controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-		JLabel lbl = new JLabel("Buttons");
+		lbl = new JLabel("Buttons");
 		lbl.setFont(lbl.getFont().deriveFont(16.0f));
 		buttons = new JButton[] {
 			new JButton("A"),
@@ -260,30 +383,14 @@ public class Simulator extends JFrame implements Runnable {
 		buttons[6].setToolTipText("Black");
 		// intialize controller buttons
 		controls.add(lbl);
-		lbl = new JLabel("Zoom: ");
-		lbl.setFont(lbl.getFont().deriveFont(14.f));
+		Font font = lbl.getFont().deriveFont(14.0f);
 		for (int i = 0; i < buttons.length; i++) {
 			buttons[i].setFocusable(false);
-			buttons[i].setFont(lbl.getFont());
+			buttons[i].setFont(font);
 			buttons[i].setActionCommand(buttons[i].getToolTipText().toLowerCase());
 			buttons[i].addActionListener(events);
 			controls.add(buttons[i]);
 		}
-		// zoom in and out
-		controls.add(Box.createHorizontalStrut(100));
-		controls.add(lbl);
-		JButton zIn = new JButton("+");
-		zIn.setFocusable(false);
-		zIn.setFont(lbl.getFont());
-		zIn.setActionCommand("in");
-		zIn.addActionListener(events);
-		controls.add(zIn);
-		JButton zOut = new JButton("-");
-		zOut.setFocusable(false);
-		zOut.setFont(lbl.getFont());
-		zOut.setActionCommand("out");
-		zOut.addActionListener(events);
-		controls.add(zOut);
 		vert.add(controls);
 		// digital panel
 		controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 5));
@@ -298,9 +405,16 @@ public class Simulator extends JFrame implements Runnable {
 			controls.add(digitals[i]);
 		}
 		vert.add(controls);
-		c.add(vert, BorderLayout.SOUTH);
-		vert = new JPanel(new VerticalFlow(false));
-		lbl = new JLabel("Analog");
+		center.add(vert, BorderLayout.SOUTH);
+		// controls below simulation area
+		center.add(p, BorderLayout.CENTER);
+		getContentPane().add(center, BorderLayout.CENTER);
+	}
+
+	// Initializes the controls on the right side.
+	private void setupRightUI() {
+		JComponent vert = new JPanel(new VerticalFlow(false));
+		JLabel lbl = new JLabel("Analog");
 		lbl.setFont(lbl.getFont().deriveFont(16.0f));
 		lbl.setAlignmentX(JComponent.CENTER_ALIGNMENT);
 		vert.add(lbl);
@@ -312,14 +426,14 @@ public class Simulator extends JFrame implements Runnable {
 		}
 		// accelerometer?
 		analogs[8] = new AnalogSlider("AX");
-		analogs[8].setValueType(2);
+		analogs[8].setValueType(1);
 		analogs[8].setValue(512);
 		analogs[9] = new AnalogSlider("AY");
-		analogs[9].setValueType(2);
+		analogs[9].setValueType(1);
 		analogs[9].setValue(512);
 		analogs[10] = new AnalogSlider("AZ");
 		analogs[10].setValue(512 + 128);
-		analogs[10].setValueType(2);
+		analogs[10].setValueType(1);
 		vert.add(analogs[8]);
 		vert.add(analogs[9]);
 		vert.add(analogs[10]);
@@ -328,21 +442,10 @@ public class Simulator extends JFrame implements Runnable {
 		lcd.setFocusable(false);
 		lcd.setEditable(false);
 		lcd.setFont(new Font("Arial", Font.PLAIN, 11));
-		p = new JScrollPane(lcd);
+		JScrollPane p = new JScrollPane(lcd);
 		p.setBorder(BorderFactory.createEtchedBorder());
 		vert.add(p);
-		// final words
-		c.add(vert, BorderLayout.EAST);
-		setSize(1000, 800);
-		gc.addMouseListener(events);
-		gc.addMouseMotionListener(events);
-		// load code dialog
-		jf = new JFileChooser();
-		jf.setDialogType(JFileChooser.OPEN_DIALOG);
-		jf.setDialogTitle("Select KISS-C/IC File to Load");
-		jf.setFileFilter(new IKCFileFilter());
-		jf.setFileHidingEnabled(true);
-		jf.setCurrentDirectory(new File("."));
+		getContentPane().add(vert, BorderLayout.EAST);
 	}
 
 	/**
@@ -358,10 +461,12 @@ public class Simulator extends JFrame implements Runnable {
 	 * Starts the program.
 	 */
 	public void start() {
+		Dimension ss = Toolkit.getDefaultToolkit().getScreenSize();
+		setLocation((ss.width - getWidth()) / 2, (ss.height - getHeight()) / 2);
 		setVisible(true);
 		requestFocus();
 		requestFocus();
-		new GraphicsThread().start();
+		new SimThread().start();
 	}
 
 	/**
@@ -415,7 +520,7 @@ public class Simulator extends JFrame implements Runnable {
 	 * @param obj the object to add
 	 */
 	public void add(StaticObject obj) {
-		items.add(obj);
+		env.add(obj);
 		gc.add(obj);
 	}
 
@@ -426,7 +531,7 @@ public class Simulator extends JFrame implements Runnable {
 	 * @param obj the object to remove
 	 */
 	public void remove(StaticObject obj) {
-		items.remove(obj);
+		env.remove(obj);
 		gc.remove(obj);
 	}
 
@@ -437,12 +542,12 @@ public class Simulator extends JFrame implements Runnable {
 	 */
 	public int buttonMask() {
 		int mask = 0;
-		if (buttons[0].isSelected()) mask |= BotballProgram.A_BUTTON;
-		if (buttons[1].isSelected()) mask |= BotballProgram.B_BUTTON;
-		if (buttons[2].isSelected()) mask |= BotballProgram.UP_BUTTON;
-		if (buttons[3].isSelected()) mask |= BotballProgram.DOWN_BUTTON;
-		if (buttons[4].isSelected()) mask |= BotballProgram.LEFT_BUTTON;
-		if (buttons[5].isSelected()) mask |= BotballProgram.RIGHT_BUTTON;
+		if (buttons[0].isSelected()) mask |= BotballProgram.A_BTN;
+		if (buttons[1].isSelected()) mask |= BotballProgram.B_BTN;
+		if (buttons[2].isSelected()) mask |= BotballProgram.UP_BTN;
+		if (buttons[3].isSelected()) mask |= BotballProgram.DOWN_BTN;
+		if (buttons[4].isSelected()) mask |= BotballProgram.LEFT_BTN;
+		if (buttons[5].isSelected()) mask |= BotballProgram.RIGHT_BTN;
 		return mask;
 	}
 
@@ -551,7 +656,7 @@ public class Simulator extends JFrame implements Runnable {
 	 */
 	public void addRobot(SimRobot r) {
 		gc.add(r);
-		robots.add(r);
+		env.addRobot(r);
 	}
 
 	/**
@@ -561,14 +666,17 @@ public class Simulator extends JFrame implements Runnable {
 	 */
 	public void removeRobot(SimRobot r) {
 		gc.remove(r);
-		robots.remove(r);
+		env.removeRobot(r);
 	}
 
-	// Changes the tint of all robots.
-	protected void tintAllRobots(Color color) {
-		for (SimRobot r : robots)
+	/**
+	 * Changes the tint color of all robots.
+	 * 
+	 * @param color the new color to shade robots
+	 */
+	public void tintAllRobots(Color color) {
+		for (SimRobot r : env.getRobots())
 			r.setTint(color);
-		gc.repaint();
 	}
 
 	// Loads code into the simulator.
@@ -612,7 +720,7 @@ public class Simulator extends JFrame implements Runnable {
 		if (instance != null && instance.gc_mode != 0)
 			instance.create_disconnect();
 		// can't hurt
-		for (SimRobot bot : robots)
+		for (SimRobot bot : env.getRobots())
 			bot.setSpeeds(0, 0);
 	}
 
@@ -624,6 +732,9 @@ public class Simulator extends JFrame implements Runnable {
 		// update status
 		setPP(!pause);
 		if (!instance._isRunning() && !pause) {
+			// set up all robots for the run
+			for (SimRobot bot : env.getRobots())
+				bot.reset();
 			clearLCD();
 			// run user code
 			Thread pRun = new Thread(Simulator.this);
@@ -643,6 +754,37 @@ public class Simulator extends JFrame implements Runnable {
 		zoom = Math.max(-3, Math.min(6, zoom + amount));
 		gc.setZoom(zoom);
 		validate();
+	}
+
+	/**
+	 * Toggles the starting light.
+	 */
+	public void toggleLight() {
+		env.setLight(!env.getStartingLight());
+		light.setSelected(env.getStartingLight());
+	}
+
+	/**
+	 * Sets up sensors.
+	 */
+	public void setUpSensors() {
+		updateSensors();
+		Rectangle ws = getBounds();
+		sensorSetup.setLocation((ws.width - sensorSetup.getWidth()) / 2 + ws.x,
+			(ws.height - sensorSetup.getHeight()) / 2 + ws.y);
+		sensorSetup.setVisible(true);
+	}
+
+	// Sets up a particular sensor.
+	protected void setUpSensor(int port) {
+		if (port < 0 || port >= sensorNames.length) return;
+		Sensor sense = Sensor.getSensor(this);
+		if (sense != null) {
+			print("Sensor installed on port " + port + "\n");
+			analogs[port].setValueType(1);
+			env.getFirstRobot().getSetup().getSensors()[port] = sense;
+			updateSensors();
+		}
 	}
 
 	/**
@@ -682,14 +824,14 @@ public class Simulator extends JFrame implements Runnable {
 			int res = com.sun.tools.javac.Main.compile(new String[] { "Program.java" },
 				getLCDWriter());
 			if (res == 0) {
-				print("Compile succeeded.\n");
 				// load into memory
-				ICClassLoader ic = new ICClassLoader();
-				Class<?> program = ic.loadClass("Program");
+				Class<?> program = icLoader.loadClass("Program");
 				instance = (BotballProgram)program.newInstance();
-				instance._setSim(this, robots.getFirst());
+				instance._setSim(this, env.getFirstRobot());
+				// moved down to avoid dup message if loading fails
+				print("Compile succeeded.\n");
 			} else {
-				print("Compile failed!\n");
+				print("Compile failed.\n");
 				instance = null;
 			}
 			pp.setEnabled(true);
@@ -698,7 +840,7 @@ public class Simulator extends JFrame implements Runnable {
 			// oh no!
 			if (e.getMessage() != null)
 				print(e.getMessage() + "\n");
-			print("Compile failed.\n");
+			print("Compile failed!\n");
 			instance = null;
 			pp.setEnabled(true);
 		} else
@@ -706,14 +848,14 @@ public class Simulator extends JFrame implements Runnable {
 	}
 
 	/**
-	 * Class which refreshes the screen.
+	 * Class which refreshes the screen and runs important sim tasks.
 	 */
-	private class GraphicsThread extends Thread {
-		public GraphicsThread() {
-			super("Graphics Thread");
+	private class SimThread extends Thread {
+		public SimThread() {
+			super("Simulation Thread");
 		}
 		public void run() {
-			long lastRepaint = 0L, lastMove = 0L, time;
+			long lastRepaint = 0L, lastMove = 0L, lastUpdate = 0L, time;
 			while (true) {
 				time = System.currentTimeMillis();
 				if (time - lastRepaint >= 33L) {
@@ -724,12 +866,24 @@ public class Simulator extends JFrame implements Runnable {
 					if (instance != null && !instance._isRunning() && !pause)
 						setPP(true);
 				}
+				if (time - lastUpdate >= 100L) {
+					// handle 100ms tasks (update sensor displays)
+					// NOTE: There will be a discrepancy between displayed values
+					//  and analog() values in code for many sensors. THIS IS NOT A BUG.
+					//  The CBC would display this behavior, too.
+					if (env.getFirstRobot() != null && !isPaused())
+						for (int i = 0; i < analogs.length; i++)
+							if (analogs[i].getValueType() != 0)
+								// update sensors
+								analogs[i].setValue(env.getFirstRobot().analog(i));
+					lastUpdate = time;
+				}
 				if (time - lastMove >= 10L) {
 					long dt = time - lastMove;
 					// handle 10ms tasks (move robot)
 					if (!isPaused())
-						for (SimRobot bot : robots)
-							bot.move(dt, bot.collide(items, dt));
+						for (SimRobot bot : env.getRobots())
+							bot.move(dt, bot.collide(dt));
 					lastMove = time;
 				}
 				try {
@@ -760,8 +914,7 @@ public class Simulator extends JFrame implements Runnable {
 				double gy = gc.invTransform(y * RobotConstants.PIXELS_TO_MM);
 				if (spin)
 					// Change rotation of object being moved
-					location.setTheta(Math.toRadians(MathMore.atan2(location.getY() - gy,
-						location.getX() - gx)));
+					location.setTheta(Math.atan2(location.getY() - gy, location.getX() - gx));
 				else {
 					// Change the location of object being moved
 					location.setX(gx);
@@ -776,7 +929,7 @@ public class Simulator extends JFrame implements Runnable {
 			dragging = null;
 			if (god.isSelected()) {
 				// look for a robot to pick up
-				for (SimRobot r : robots)
+				for (SimRobot r : env.getRobots())
 					if (r.obj.hit(x, y)) {
 						dragging = r;
 						break;
@@ -826,6 +979,16 @@ public class Simulator extends JFrame implements Runnable {
 			else if (cmd.equals("black"))
 				// Check for BLACK button
 				buttons[6].setSelected(!buttons[6].isSelected());
+			else if (cmd.equals("light"))
+				// Light switch
+				toggleLight();
+			else if (cmd.equals("setup"))
+				// Set up sensors
+				setUpSensors();
+			else if (cmd.startsWith("conf") && cmd.length() > 4) try {
+				// Set up one sensor
+				setUpSensor(Integer.parseInt(cmd.substring(4)));
+			} catch (Exception ex) { }
 		}
 		public void keyPressed(KeyEvent e) {
 			// Map key presses to buttons on the screen
@@ -874,7 +1037,14 @@ public class Simulator extends JFrame implements Runnable {
 				e.getKeyCode() == KeyEvent.VK_UNDERSCORE)
 				zoom(-1);
 			else if (e.getKeyCode() == KeyEvent.VK_C)
+				// collision rendering on (currently no off)
 				gc.renderCollision(true);
+			else if (e.getKeyCode() == KeyEvent.VK_L)
+				// start light
+				toggleLight();
+			else if (e.getKeyCode() == KeyEvent.VK_S)
+				// Set up sensors
+				setUpSensors();
 		}
 		public void keyTyped(KeyEvent e) {}
 	}

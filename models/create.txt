@@ -15,4 +15,8 @@
 
 base = ellipse, -165, -165, 330, 330
 base.0 = subtract, rect, -165, -165, 40, 330
-#base.1 = ... 
+
+# Example on how to use sub-models:
+# base.1 = add,mymodel
+# mymodel = poly, 0, 0, 1, 0, 0, 1
+# mymodel.0 = subtract, poly, 2, 1, 1, 2, 3, 1

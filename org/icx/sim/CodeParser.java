@@ -28,8 +28,10 @@ import java.util.regex.*;
  */
 public class CodeParser {
 	// Removes C function prototypes in generated file
-	public static final Pattern PROTOTYPE = Pattern.compile("[a-z][a-z_0-9]* [a-z][a-z_0-9]* \\(.*\\)\\s*?;",
+	public static final Pattern PROTOTYPE = Pattern.compile("([a-z][a-z_0-9]*) [a-z][a-z_0-9]* \\(.*\\)\\s*?;",
 		Pattern.DOTALL | Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
+	// Trigger Java include hot comments in generated file
+	public static final Pattern JIT = Pattern.compile("//\\s*?#");
 
 	/**
 	 * Reads data from the given reader and writes to Program.java for running.
@@ -70,7 +72,11 @@ public class CodeParser {
 		while (content.hasMoreTokens()) {
 			line = content.nextToken();
 			// strip function prototypes (only detectable here?)
-			line = PROTOTYPE.matcher(line).replaceAll("");
+			Matcher m = PROTOTYPE.matcher(line);
+			if (m.find() && !m.group(1).equals("return"))
+				line = m.replaceFirst("");
+			// java inline includes
+			line = JIT.matcher(line).replaceAll("");
 			pr.write(line);
 			pr.write('\n');
 		}
@@ -246,7 +252,7 @@ public class CodeParser {
 				// rudimentary function pointer fix
 				it.remove();
 				it.add(singleToken("\"" + t.sval + "\""));
-			} else if (t.cval == '(' && (oneAgo.equals("if") || oneAgo.equals("while")));
+			} else if (t.cval == '(' && oneAgo != null && (oneAgo.equals("if") || oneAgo.equals("while")));
 				/*
 				 * TODO if statements are broken:
 				 * 

@@ -11,43 +11,66 @@ create.radius = 120
 #  For each controller, the following must be defined:
 #   .type = controller code type
 #   .icon = icon in the images folder or JAR
-#   .model = collision model to use, usually a number
+#   .model = collision model to use from the models/ folder (no extension)
 #   .map = gc for create, none for static, motor#,# for outputs
 #   .radius = wheel radius from the center (if map is not gc or none)
 #   .factor = output unit/sec to mm/sec (if map is not gc or none)
 #               since Create takes speeds in mm/sec, *BC in ticks/sec, HB/RCX in PWM%
 #               the standard model uses 0.26316 for ticks/sec -> mm/sec
 
-enable=cbc,cbc2,cbc2-create,static
+enable=cbc2,cbc2-create,cbc2-static
+
+# To enable the old CBC instead, use this line instead of the above:
+# enable=cbc,cbc-create,cbc-static
+
+# CBC v2
 
 cbc2.type = cbc2
 cbc2.icon = cbc2
-cbc2.model = 1
+cbc2.model = generic
 cbc2.map = motor0,3
 cbc2.radius = 110
 cbc2.factor = 0.26316
 
+cbc2-create.type = cbc2
+cbc2-create.icon = create
+cbc2-create.map = gc
+cbc2-create.model = create
+
+cbc2-static.type = cbc2
+cbc2-static.icon = cbc2
+cbc2-static.model = generic
+cbc2-static.map = none
+
+# CBC v1
+
 cbc.type = cbc
 cbc.icon = cbc
-cbc.model = 1
+cbc.model = generic
 cbc.map = motor0,3
 cbc.radius = 110
 cbc.factor = 0.26316
 
-static.type = cbc2
-static.icon = cbc2
-static.model = 1
-static.map = none
+cbc-create.type = cbc
+cbc-create.icon = create
+cbc-create.map = gc
+cbc-create.model = create
 
-cbc2-create.type = cbc2
-cbc2-create.icon = create
-cbc2-create.map = gc
-cbc2-create.model = 0
+cbc-static.type = cbc
+cbc-static.icon = cbc
+cbc-static.model = generic
+cbc-static.map = none
 
-# Need an icon and testing so XBC can come online with the generic model.
-# xbc.type = xbc
-# xbc.icon = cbc2
-# xbc.map = motor0,3
-# xbc.model = 1
-# xbc.radius = 110
-# xbc.factor = 0.26316
+# Need an icon and testing so XBC can be supported.
+#  Enable above at own risk!
+xbc.type = xbc
+xbc.icon = xbc
+xbc.map = motor0,3
+xbc.model = generic
+xbc.radius = 110
+xbc.factor = 0.26316
+
+xbc-create.type = xbc
+xbc-create.icon = create
+xbc-create.map = gc
+xbc-create.model = create

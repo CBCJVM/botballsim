@@ -18,6 +18,8 @@
 package org.icx.sim;
 
 import java.awt.*;
+import java.awt.event.*;
+
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicSliderUI;
 
@@ -26,7 +28,7 @@ import javax.swing.plaf.basic.BasicSliderUI;
  * 
  * @author Stephen Carlson
  */
-public class AnalogSlider extends JPanel {
+public class AnalogSlider extends JPanel implements ActionListener {
 	private static final long serialVersionUID = 0L;
 
 	// Actual user input slider.
@@ -52,11 +54,14 @@ public class AnalogSlider extends JPanel {
 		// available types:
 		//  Set: sets the value to constant
 		types = new JComboBox();
+		types.setActionCommand("type");
+		types.addActionListener(this);
 		types.addItem("Set");
 		//  Sets value to random quantity within a given range
-		types.addItem("Random");
+		//  Disabled - nobody seems to want/use it
+		//types.addItem("Random");
 		//  Sets value to real-world sensor
-		types.addItem("Real...");
+		types.addItem("Real");
 		types.setFocusable(false);
 		// Label for the value
 		label = new JLabel("1023");
@@ -69,7 +74,9 @@ public class AnalogSlider extends JPanel {
 		add(vert);
 		// divide sensors visually on screen
 		setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.BLACK));
+		setValueType(0);
 	}
+
 	/**
 	 * Gets the value type for this sensor.
 	 * 
@@ -78,30 +85,34 @@ public class AnalogSlider extends JPanel {
 	public int getValueType() {
 		return types.getSelectedIndex();
 	}
+
 	/**
 	 * Changes the value type for this sensor.
-	 *  Actual logic for random and real is handled by Simulator
+	 *  Actual logic for real is handled by other classes
 	 * 
 	 * @param type the new value type:
 	 * 0 - Set
-	 * 1 - Random
-	 * 2 - Real
+	 * <s>1 - Random</s>
+	 * 1 - Real
 	 */
 	public void setValueType(int type) {
 		types.setSelectedIndex(type);
 	}
+
 	/**
 	 * Disables the type selection drop down while running.
 	 */
 	public void disableType() {
 		types.setEnabled(false);
 	}
+
 	/**
 	 * Enables the type selection drop down while paused.
 	 */
 	public void enableType() {
 		types.setEnabled(true);
 	}
+
 	/**
 	 * Gets the value of the slider.
 	 * 
@@ -110,6 +121,7 @@ public class AnalogSlider extends JPanel {
 	public int getValue() {
 		return slide.getValue();
 	}
+
 	/**
 	 * Changes the value of the slider.
 	 *  Use if sensor is externally controlled to update values on screen.
@@ -176,5 +188,10 @@ public class AnalogSlider extends JPanel {
 			g.setColor(Color.GRAY);
 			g.fillRect(trackRect.x, thumbRect.y, trackRect.width, thumbRect.height);
 		}
+	}
+
+	public void actionPerformed(ActionEvent e) {
+		// Update slider status
+		slide.setEnabled(types.getSelectedIndex() == 0);
 	}
 }

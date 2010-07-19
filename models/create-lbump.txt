@@ -1,0 +1,8 @@
+# Create left bumper
+#  Note that the bumper might fire if the robot barely skirts a surface
+#  Until collision is truly fixed, this will remain a possible bug
+
+base = ellipse, -170, -170, 340, 340
+base.0 = subtract, ellipse, -130, -130, 260, 260
+base.1 = subtract, rect, -170, -170, 180, 340
+base.2 = subtract, rect, -170, 20, 340, 150

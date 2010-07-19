@@ -27,23 +27,9 @@ import java.awt.geom.*;
  *  Models are indexed via the robots.txt file into the array of available models.
  */
 public class CollisionModels {
-	// All models are shown here.
-	private static Area[] models;
-
-	// Makes all built-in models.
-	//  TODO remove this method once files are properly implemented
-	private static void buildModels() {
-		// 4 Models: Create and generic CBC/XBC robot, Create left & right bumpers
-		models = new Area[4];
-		Area create = new Area(new Ellipse2D.Float(-165.f, -165.f, 330.f, 330.f));
-		create.subtract(new Area(new Rectangle2D.Float(-165.f, -165.f, 40.f, 330.f)));
-		models[0] = create;
-		Area bc = new Area(new Rectangle2D.Float(-97.565f, -51.565f, 149.13f, 103.13f));
-		bc.add(new Area(new Rectangle2D.Float(-36.f, -98.f, 72.f, 196.f)));
-		models[1] = bc;
-	}
-
 	/**
+	 * @deprecated Use fromFile() instead, as these models no longer truly exist.
+	 * 
 	 * Gets the specified model. Units are indexed in mm. 0,0 is robot center
 	 *  as defined by the picture, so that a rotating robot will
 	 *  rotate the model in lock step.
@@ -51,16 +37,15 @@ public class CollisionModels {
 	 * @param index the model index to retrieve
 	 * @return the specified model
 	 */
+	@Deprecated
 	public static Area getModel(int index) {
-		/*if (models == null) buildModels();
-		if (index < 0 || index >= models.length)
-			throw new IndexOutOfBoundsException(index + " is not a valid model");
-		return models[index];*/
 		return fromFile(Integer.toString(index));
 	}
 
 	/**
-	 * Reads in a collision model from a file.
+	 * Reads in a collision model from a file. Units are indexed in mm.
+	 *  0,0 is robot center as defined by the picture, so that a rotating
+	 *  robot will rotate the model in lock step.
 	 * 
 	 * @param fileName the file to read, without path or extension
 	 * @return the model from that file
@@ -95,7 +80,7 @@ public class CollisionModels {
 				.length() > 0; i++) {
 			// lines must have a , for the operation
 			int index = prop.indexOf(',');
-			if (index < 0) continue;
+			if (index < 0 || index >= prop.length() - 1) continue;
 			String op = prop.substring(0, index).trim(),
 				data = prop.substring(index + 1, prop.length()).trim();
 			// operations here
@@ -138,7 +123,8 @@ public class CollisionModels {
 				nextFloat(str), nextFloat(str)));
 		else if (type.equals("poly") && str.countTokens() % 2 == 0 && str.countTokens() > 2) {
 			// polygon primitive
-			Path2D path = new Path2D.Float();
+			// java.awt.geom.Path2D appears to be Java 6 specific. Reverting to GeneralPath.
+			GeneralPath path = new GeneralPath();
 			// read in lots of x, y pairs
 			path.moveTo(nextFloat(str), nextFloat(str));
 			while (str.countTokens() > 0)

@@ -138,11 +138,28 @@ public abstract class SimObject {
 	 */
 	public Area getTransformedCollision() {
 		Area test = new Area(getCollision());
-		Location loc = getLocation();
-		test.transform(AffineTransform.getRotateInstance(
-			loc.getTheta()));
-		test.transform(AffineTransform.getTranslateInstance(
-			loc.getX(), loc.getY()));
+		transformArea(test, getLocation());
 		return test;
 	}
+
+	/**
+	 * Transforms the specified area from device to world coordinates.
+	 * 
+	 * @param initial the base area with device coordinates
+	 * @param loc the location to specify the transformation
+	 */
+	public static final void transformArea(Area initial, Location loc) {
+		initial.transform(AffineTransform.getRotateInstance(
+			loc.getTheta()));
+		initial.transform(AffineTransform.getTranslateInstance(
+			loc.getX(), loc.getY()));
+	}
+
+	/**
+	 * Paints any special features of this simulated object.
+	 *  The input Graphics is transformed to location, so just draw stuff!
+	 * 
+	 * @param g the Graphics on which to draw
+	 */
+	protected void paintComponent(java.awt.Graphics2D g) { }
 }

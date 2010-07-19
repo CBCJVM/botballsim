@@ -17,8 +17,10 @@
 
 package org.icx.sim;
 
+import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
+import java.util.List;
 
 /**
  * A class that represents the user robot.
@@ -34,24 +36,28 @@ public class SimRobot extends MovableObject {
 	private int lvel;
 	private int rvel;
 
-	// TODO controller types are not differentiated, and some are unimplemented
-	//  create is properly differentiated from others in modelling
+	// Controller types available
 	public static final String RCX = "rcx";
 	public static final String HB = "hb";
 	public static final String XBC = "xbc";
 	public static final String CBC = "cbc2";
 	public static final String CBC_V1 = "cbc";
+	// The order in which controllers naturally progress
+	//  used heavily to determine which functions are available on which types
 	public static final String[] SORT_ORDER = new String[] {
 		RCX, HB, XBC, CBC_V1, CBC
 	};
-	// if this is to be done later, BotballProgram.java has the correct
-	//  mappings for which functions are on which platforms.
 
 	// CACHED: Information from RobotsFile for this bot.
 	private float radius;
 	private float factor;
 	private Area model;
 	private String drive;
+
+	// The robot's sensor and initial setup.
+	private RobotConfig setup;
+	// Any auxiliary setup required. For Creates mostly.
+	private RobotConfig auxSetup;
 
 	/**
 	 * Creates a new simulated robot.
@@ -62,20 +68,24 @@ public class SimRobot extends MovableObject {
 	public SimRobot(Simulator parent, String robotType) {
 		super(RobotsFile.getParameter(robotType + ".icon"));
 		this.parent = parent;
+		auxSetup = null;
 		// set type and drive from config file
 		type = RobotsFile.getParameter(robotType + ".type");
 		drive = RobotsFile.getParameter(robotType + ".map");
 		factor = 1.f;
 		if (drive.equals("none"));
-		else if (drive.equals("gc"))
+		else if (drive.equals("gc")) {
 			// Create specialization
 			radius = RobotConstants.CREATE_RADIUS;
-		else {
+			auxSetup = new CreateSensorConfig();
+		} else {
 			radius = RobotsFile.getParameterFloat(robotType + ".radius");
 			factor = RobotsFile.getParameterFloat(robotType + ".factor");
 		}
-		model = CollisionModels.getModel(RobotsFile.getParameterInt(robotType + ".model"));
-		setSpeeds(0, 0);
+		// read collision model
+		model = CollisionModels.fromFile(RobotsFile.getParameter(robotType + ".model"));
+		setup = new RobotConfig(robotType);
+		reset();
 	}
 
 	/**
@@ -100,6 +110,35 @@ public class SimRobot extends MovableObject {
 		if (index1 < 0) return true;
 		if (index2 < 0) return false;
 		return index1 <= index2;
+	}
+
+	/**
+	 * Resets this robot to its starting position.
+	 */
+	public void reset() {
+		setSpeeds(0, 0);
+		// copy to avoid messing with setup
+		setLocation(new Location(setup.getStart()));
+	}
+
+	/**
+	 * Gets this robot's configuration.
+	 * 
+	 * @return the robot configuration
+	 */
+	public RobotConfig getSetup() {
+		return setup;
+	}
+
+	/**
+	 * Gets the auxiliary setup. If drive was "gc", returns the Create setup;
+	 *  other setups might be returned in the future.
+	 * Note that starting location is still read from main setup.
+	 * 
+	 * @return the secondary robot setup
+	 */
+	public RobotConfig getAuxSetup() {
+		return auxSetup;
 	}
 
 	/**
@@ -131,7 +170,7 @@ public class SimRobot extends MovableObject {
 	 * 
 	 * @return the drive type.
 	 * Possible values:
-	 *  gc - use Create (note that type=create is required to enable create drive commands)
+	 *  gc - use Create (drive=gc means that Create library is enabled)
 	 *  motor#,# - use motor ports
 	 *  none - no mapping
 	 */
@@ -186,14 +225,6 @@ public class SimRobot extends MovableObject {
 		}
 	}
 
-	public int analog(int port) {
-		return parent.getAnalog(port).getValue();
-	}
-
-	public boolean digital(int port) {
-		return parent.getDigital(port).isSelected();
-	}
-
 	public MotorComponent getMotor(int port) {
 		return parent.getMotor(port);
 	}
@@ -239,15 +270,16 @@ public class SimRobot extends MovableObject {
 		for (SimObject obj : collisions) {
 			// use the slide vector to kill velocities
 			dir = obj.hitDirection(this);
-			System.out.println("Collision, || vector direction=" +
-				Math.toDegrees(dir.getTheta()) + ", personal direction=" +
-				Math.toDegrees(dest.getTheta()) + ", loc=" + dest);
 			if (dir == null) {
 				// stop now
 				force = 0.f; break;
-			} else
+			} else {
+				System.out.println("Collision, || vector direction=" +
+					Math.toDegrees(dir.getTheta()) + ", personal direction=" +
+					Math.toDegrees(dest.getTheta()) + ", loc=" + dest);
 				// adjust force to "component in direction of given vector"
 				force = force * (float)Math.cos(dest.getTheta() - dir.getTheta());
+			}
 		}
 		// rotate robot
 		dest.setTheta(dest.getTheta() + omega * dt / 1000.f);
@@ -256,19 +288,45 @@ public class SimRobot extends MovableObject {
 		dest.increment(dt);
 	}
 
+	// Paints this robot's sensors.
+	protected void paintComponent(Graphics2D g) {
+		// main first
+		g.setColor(Color.BLUE);
+		renderSensors(g, setup);
+		// then aux
+		if (auxSetup != null) {
+			g.setColor(Color.RED);
+			renderSensors(g, auxSetup);
+		}
+	}
+
+	// Renders the sensors in the setup on the robot.
+	protected void renderSensors(Graphics2D g, RobotConfig setup) {
+		Location loc;
+		int rx, ry;
+		for (Sensor sense : setup.getSensors())
+			if (sense != null && (loc = sense.getLocation()) != null) {
+				// find integer coordinates
+				rx = (int)Math.round(loc.getX());
+				ry = (int)Math.round(loc.getY());
+				// TODO directional indication
+				g.fillRect(rx - 2, ry - 2, 4, 4);
+			}
+	}
+
 	/**
 	 * Collides with the given object.
 	 * 
-	 * @param toFind the objects to collide with
+	 * @param env the world in which to collide
 	 * @param dt the time difference in milliseconds across which interval is computed
 	 * @return whether moving would collide
 	 */
-	public List<SimObject> collide(Collection<SimObject> toFind, long dt) {
+	public List<SimObject> collide(long dt) {
 		List<SimObject> ret = new LinkedList<SimObject>();
 		Location loc = new Location(getLocation());
 		moveLocation(loc, dt);
 		Area shape = getTransformedCollision(), test;
-		for (SimObject obj : toFind) {
+		for (SimObject obj : parent.getEnvironment().getObjects()) {
 			if (obj == this) continue;
 			// do a good intersection
 			test = new Area(obj.getTransformedCollision());
@@ -296,5 +354,73 @@ public class SimRobot extends MovableObject {
 		// rotate robot
 		dest.setTheta(dest.getTheta() + omega * dt / 1000.f);
 		dest.increment(dt);
+	}
+
+	/**
+	 * Gets the analog value of this sensor, after factoring in the type.
+	 * 
+	 * @param port the port to read
+	 * @return the real value of the sensor
+	 */
+	public int analog(int port) {
+		Sensor input;
+		AnalogSlider pInput = parent.getAnalog(port);
+		if (port > 7 || (input = setup.getSensor(port)) == null || pInput.getValueType() == 0)
+			// special (accel_x, accel_y, accel_z) or not set up
+			return pInput.getValue();
+		// ugly
+		input.setParentRobot(this);
+		return input.getValue(parent.getEnvironment());
+	}
+
+	/**
+	 * Gets the analog value from auxiliary configuration of this sensor,
+	 *  after factoring in the type.
+	 * 
+	 * @param port the port to read
+	 * @return the real value of the sensor
+	 */
+	public int extra_analog(int port) {
+		Sensor input;
+		if (auxSetup == null || (input = auxSetup.getSensor(port)) == null)
+			// special or not set up, but can't delegate to parent
+			return 1023;
+		// ugly
+		input.setParentRobot(this);
+		return input.getValue(parent.getEnvironment());
+	}
+
+	/**
+	 * Gets the digital value of this sensor, after factoring in the type.
+	 * 
+	 * @param port the port to read
+	 * @return the real value of the sensor
+	 */
+	public boolean digital(int port) {
+		Sensor input;
+		LockingButton pInput = parent.getDigital(port);
+		if ((input = setup.getSensor(port)) == null || pInput.getValueType() == 0)
+			// not set up
+			return pInput.isSelected();
+		// ugly
+		input.setParentRobot(this);
+		return input.digitalValue(parent.getEnvironment());
+	}
+
+	/**
+	 * Gets the digital value from auxiliary configuration of this sensor,
+	 *  after factoring in the type.
+	 * 
+	 * @param port the port to read
+	 * @return the real value of the sensor
+	 */
+	public boolean extra_digital(int port) {
+		Sensor input;
+		if (auxSetup == null || (input = auxSetup.getSensor(port)) == null)
+			// special or not set up, but can't delegate to parent
+			return false;
+		// ugly
+		input.setParentRobot(this);
+		return input.digitalValue(parent.getEnvironment());
 	}
 }

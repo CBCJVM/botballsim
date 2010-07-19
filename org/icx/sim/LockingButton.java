@@ -40,6 +40,8 @@ public class LockingButton extends JButton {
 	private boolean lockDown;
 	// Whether button is pressed.
 	private boolean inv;
+	// Value type of sensor: 0 for set, 1 for real
+	private int valueType;
 
 	/**
 	 * Creates a button with the given title.
@@ -56,7 +58,9 @@ public class LockingButton extends JButton {
 		lockDown = inv = false;
 		u();
 		addMouseListener(new LocalMouseListener());
+		setValueType(0);
 	}
+
 	/**
 	 * Updates the icon to match the attributes
 	 */
@@ -73,6 +77,7 @@ public class LockingButton extends JButton {
 				setIcon(no);
 		}
 	}
+
 	/**
 	 * Gets whether the button is locked down.
 	 * 
@@ -81,6 +86,7 @@ public class LockingButton extends JButton {
 	public boolean isLocked() {
 		return lockDown;
 	}
+
 	/**
 	 * Changes locked state (NC/NO).
 	 * 
@@ -90,9 +96,35 @@ public class LockingButton extends JButton {
 		this.lockDown = lockDown;
 		u();
 	}
+
+	/**
+	 * Gets the value type for this sensor.
+	 * 
+	 * @return the type of value to be used
+	 */
+	public int getValueType() {
+		return valueType;
+	}
+
+	/**
+	 * Changes the value type for this sensor.
+	 *  Actual logic for real is handled by other classes
+	 * 
+	 * @param type the new value type:
+	 * 0 - Set
+	 * <s>1 - Random</s>
+	 * 1 - Real
+	 */
+	public void setValueType(int type) {
+		valueType = type;
+		if (valueType == 0) setEnabled(true);
+		else setEnabled(false);
+	}
+
 	public boolean isSelected() {
 		return lockDown != inv;
 	}
+
 	public void setSelected(boolean status) {
 		inv = status;
 		u();

@@ -23,12 +23,13 @@ import java.util.*;
 /**
  * A class which provides Botball library functions.
  * 
- *  TODO fix up the inconsistent interface between this file and Simulator.java
+ *  TODO finish off the controller perks
  * 
  * @author Stephen Carlson
  */
 public abstract class BotballProgram {
 	// Constants (#define in standard library)
+	//  Unused, but left for compatibility
 	public static final int A_BUTTON = 1;
 	public static final int B_BUTTON = 2;
 	public static final int CHOOSE_BUTTON = 1;
@@ -75,7 +76,6 @@ public abstract class BotballProgram {
 	private long[] _counts;     // the BEMF counters
 	private int[] _pos;         // servo positions
 	private int[] _loc;         // servo actual locations
-	private boolean _servos_enabled = false; // XBC/HB servo enable flag
 	private List<UserThread> _threads; // all user threads
 	private int _nextID;        // next available thread ID
 	private Simulator _sim;     // parent simulator
@@ -221,8 +221,8 @@ public abstract class BotballProgram {
 	public int create_bumpdrop() {
 		_nc();
 		if (!_ic()) return -1;
-		// FIXME
-		gc_lbump = gc_rbump = 0;
+		gc_lbump = _bot.extra_digital(0) ? 1 : 0;
+		gc_rbump = _bot.extra_digital(1) ? 1 : 0;
 		// Drops can never trigger.
 		gc_ldrop = gc_rdrop = gc_fdrop = 0;
 		return 0;
@@ -231,11 +231,14 @@ public abstract class BotballProgram {
 	public int create_cliffs() {
 		_nc();
 		if (!_ic()) return -1;
-		// FIXME 2D representation, so cliffs can never fire
-		//  However, amounts are related to the reflectance as observed with the 2010
-		//  Oil Slick Detection code!!!
+		// 2D representation, so cliffs can never fire
+		// However, cliff amounts are related to the reflectance as observed with the 2010
+		//  Explorer Post oil slick detection code!!!
 		gc_rcliff = gc_rfcliff = gc_lcliff = gc_lfcliff = 0;
-		gc_rcliff_amt = gc_rfcliff_amt = gc_lcliff_amt = gc_lfcliff_amt = 0;
+		gc_lcliff_amt = _bot.extra_analog(2);
+		gc_lfcliff_amt = _bot.extra_analog(3);
+		gc_rfcliff_amt = _bot.extra_analog(4);
+		gc_rcliff_amt = _bot.extra_analog(5);
 		return 0;
 	}
 	// Create Library: update angle travelled
@@ -481,11 +484,13 @@ public abstract class BotballProgram {
 		_updateMotor(port);
 	}
 	// XBC/CBC Library: gets position counter on given motor
-	public long get_motor_position_counter(int port) {
+	// NOTE: Since XBC is 16bit, "long" is a 32bit "int", so this was changed to "int"
+	//  _counts will always be 64bit long
+	public int get_motor_position_counter(int port) {
 		_s();
-		if (port < 0 || port > 3) return 0L;
-		if (!_checkPID()) return 0L;
-		return _counts[port];
+		if (port < 0 || port > 3) return 0;
+		if (!_checkPID()) return 0;
+		return (int)_counts[port];
 	}
 	// XBC/CBC Library: clears position counter on given motor
 	public void clear_motor_position_counter(int port) {
@@ -500,24 +505,29 @@ public abstract class BotballProgram {
 		_s();
 		if (port < 0 || port > 3) return -1;
 		if (!_bot.controllerAtLeast("hb")) return -1;
-		return _pos[port];
+		// scale to XBC scale
+		if (_bot.controllerEquals(SimRobot.XBC))
+			return _pos[port] / 8;
+		else
+			return _pos[port];
 	}
 	// HB/XBC Library: enables all servos
 	public void enable_servos() {
 		_s();
-		_servos_enabled = true;
 		_bot.enableServos();
 	}
 	// HB/XBC Library: disables all servos
 	public void disable_servos() {
 		_s();
-		_servos_enabled = false;
 		_bot.disableServos();
 	}
 	// HB/XBC/CBC Library: sets servo position on given port
 	public void set_servo_position(int port, int pos) {
 		_s();
 		if (!_bot.controllerAtLeast("hb")) return;
+		// scale to CBC scale
+		if (_bot.controllerEquals(SimRobot.XBC))
+			pos *= 8;
 		if (port < 0 || port > 3 || pos < -1 || pos > 2047) return;
 		_pos[port] = pos;
 		MotorComponent servo = _bot.getServo(port);
@@ -602,14 +612,17 @@ public abstract class BotballProgram {
 	}
 	// CBC Library: returns x acceleration from -2047 to 2047?
 	public int accel_x() {
+		if (!_bot.controllerAtLeast(SimRobot.CBC_V1)) return 0;
 		return 4 * (_bot.analog(8) - 512);
 	}
 	// CBC Library: returns y acceleration from -2047 to 2047?
 	public int accel_y() {
+		if (!_bot.controllerAtLeast(SimRobot.CBC_V1)) return 0;
 		return 4 * (_bot.analog(9) - 512);
 	}
 	// CBC Library: returns z acceleration from -2047 to 2047?
 	public int accel_z() {
+		if (!_bot.controllerAtLeast(SimRobot.CBC_V1)) return 0;
 		return 4 * (_bot.analog(10) - 512);
 	}
 	// Checks to see if controller supports PID (>= XBC)
@@ -669,10 +682,12 @@ public abstract class BotballProgram {
 					servo.setPos(_loc[i]);
 					servo.setShaftAngle(180 * _loc[i] / 2048 - 90);
 				}
-				if (left == i) ls = _vel[i] * 9;
-				if (right == i) rs = _vel[i] * 9;
 			}
 			// TODO allow other motor types, gearing...
+			if (left >= 0 && left < _vel.length)
+				ls = _vel[left] * 9;
+			if (right >= 0 && right < _vel.length)
+				rs = _vel[right] * 9;
 			if (drive != null)
 				_bot.setSpeeds(ls, rs);
 			// resolution on CBC varies, XBC is probably locked at around 3L-4L (FPGA)
@@ -821,35 +836,35 @@ public abstract class BotballProgram {
 	}
 	// XBC/CBC Library: returns status of A button
 	public boolean a_button() {
-		return (button_mask() & A_BUTTON) > 0;
+		return (button_mask() & A_BTN) > 0;
 	}
 	// XBC/CBC Library: returns status of B button
 	public boolean b_button() {
-		return (button_mask() & B_BUTTON) > 0;
+		return (button_mask() & B_BTN) > 0;
 	}
 	// XBC/CBC Library: returns status of left button
 	public boolean left_button() {
-		return (button_mask() & LEFT_BUTTON) > 0;
+		return (button_mask() & LEFT_BTN) > 0;
 	}
 	// XBC/CBC Library: returns status of right button
 	public boolean right_button() {
-		return (button_mask() & RIGHT_BUTTON) > 0;
+		return (button_mask() & RIGHT_BTN) > 0;
 	}
 	// XBC/CBC Library: returns status of up button
 	public boolean up_button() {
-		return (button_mask() & UP_BUTTON) > 0;
+		return (button_mask() & UP_BTN) > 0;
 	}
 	// XBC/CBC Library: returns status of down button
 	public boolean down_button() {
-		return (button_mask() & DOWN_BUTTON) > 0;
+		return (button_mask() & DOWN_BTN) > 0;
 	}
 	// HB/RCX/XBC/CBC Library: returns status of choose button
 	public boolean choose_button() {
-		return (button_mask() & CHOOSE_BUTTON) > 0;
+		return (button_mask() & A_BTN) > 0;
 	}
 	// HB/RCX/XBC/CBC Library: returns status of cancel button
 	public boolean cancel_button() {
-		return (button_mask() & CANCEL_BUTTON) > 0;
+		return (button_mask() & B_BTN) > 0;
 	}
 	// CBC Library: returns status of black button
 	public boolean black_button() {
@@ -1097,11 +1112,6 @@ public abstract class BotballProgram {
 	int[] _createLEDs() {
 		return _gc_leds;
 	}
-	// Returns whether global servos are enabled
-	//  for CBC, individual servos might have different status
-	boolean _servosEnabled() {
-		return _servos_enabled;
-	}
 	// Sets parent simulator and robot
 	void _setSim(Simulator sim, SimRobot bot) {
 		_sim = sim;
@@ -1244,7 +1254,8 @@ public abstract class BotballProgram {
 			} catch (Throwable e) {
 				if (e.getCause() != null) e = e.getCause();
 				if (e instanceof Killed) return;
-				_bot.printf("Run-time Error - " + e.getClass().getSimpleName() + "\n");
+				e.printStackTrace(System.out);
+				_bot.printf("Run-time Error, in thread " + getName() + ":" + e.getClass().getSimpleName() + "\n");
 			}
 		}
 		/**
