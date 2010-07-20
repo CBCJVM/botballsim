@@ -94,12 +94,16 @@ public abstract class Sensor {
 			// get location
 			Location loc = new Location(Double.parseDouble(str.nextToken().trim()),
 				Double.parseDouble(str.nextToken().trim()));
-			// try to instantiate a sensor
-			return (Sensor)SENSOR_TYPES[index].getConstructors()[0].
-				newInstance(loc);
-		} catch (Exception e) {
-			return null;
-		}
+			// look for correct constructor
+			Constructor<?>[] cons = SENSOR_TYPES[index].getConstructors();
+			Type[] types;
+			for (int i = 0; i < cons.length; i++)
+				if ((types = cons[i].getParameterTypes()).length == 1 &&
+					types[0] == Location.class)
+					// try to instantiate a sensor
+					return (Sensor)cons[i].newInstance(loc);
+		} catch (Exception e) { }
+		return null;
 	}
 
 	// The robot on which the sensor is installed.

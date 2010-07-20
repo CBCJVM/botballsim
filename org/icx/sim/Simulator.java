@@ -219,7 +219,7 @@ public class Simulator extends JFrame implements Runnable {
 		Container c = sensorSetup.getContentPane();
 		c.setLayout(new VerticalFlow(true));
 		JLabel name; JButton setup; JComponent across;
-		sensorNames = new JLabel[15];
+		sensorNames = new JLabel[16];
 		c.add(Box.createVerticalStrut(2));
 		for (int i = 0; i < sensorNames.length; i++) {
 			// row label
@@ -242,7 +242,10 @@ public class Simulator extends JFrame implements Runnable {
 			across.add(setup);
 			across.add(Box.createHorizontalStrut(2));
 			c.add(across);
+			// bar between 7 and 8
 			c.add(Box.createVerticalStrut(2));
+			if (i == 7)
+				across.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
 		}
 		sensorSetup.pack();
 		sensorSetup.setSize(400, sensorSetup.getHeight());
@@ -778,7 +781,13 @@ public class Simulator extends JFrame implements Runnable {
 		Sensor sense = Sensor.getSensor(this);
 		if (sense != null) {
 			print("Sensor installed on port " + port + "\n");
-			analogs[port].setValueType(1);
+			if (port < 8)
+				// analog
+				analogs[port].setValueType(1);
+			else
+				// digital
+				digitals[port - 8].setValueType(1);
+			// install on sensors
 			env.getFirstRobot().getSetup().getSensors()[port] = sense;
 			updateSensors();
 		}
@@ -869,11 +878,18 @@ public class Simulator extends JFrame implements Runnable {
 					// NOTE: There will be a discrepancy between displayed values
 					//  and analog() values in code for many sensors. THIS IS NOT A BUG.
 					//  The CBC would display this behavior, too.
-					if (env.getFirstRobot() != null && !isPaused())
+					if (env.getFirstRobot() != null && !isPaused()) {
 						for (int i = 0; i < analogs.length; i++)
 							if (analogs[i].getValueType() != 0)
-								// update sensors
+								// update analog sensors
 								analogs[i].setValue(env.getFirstRobot().analog(i));
+						for (int i = 0; i < digitals.length; i++)
+							if (digitals[i].getValueType() != 0) {
+								// update digital sensors
+								digitals[i].setLockState(false);
+								digitals[i].setSelected(env.getFirstRobot().digital(i + 8));
+							}
+					}
 					lastUpdate = time;
 				}
 				if (time - lastMove >= 10L) {

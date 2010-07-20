@@ -52,7 +52,7 @@ public class RobotConfig {
 	private String type;
 	// The start location.
 	private Location start;
-	// The robot sensors from 0-15, where 0-7 are analog and 8-15 are digital.
+	// The robot sensors go from 0-15, where 0-7 are analog and 8-15 are digital.
 	//  Generally, a null slot means value is set and should be read from screen.
 	private Sensor[] sensors;
 
@@ -62,7 +62,7 @@ public class RobotConfig {
 	 * @param robotType the robot type (name from the robots.txt file) to use
 	 */
 	public RobotConfig(String robotType) {
-		this(robotType, new Sensor[15]);
+		this(robotType, new Sensor[16]);
 	}
 
 	/**
