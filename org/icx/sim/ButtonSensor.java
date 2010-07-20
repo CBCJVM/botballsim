@@ -59,7 +59,7 @@ public class ButtonSensor extends Sensor {
 		this.geometry = geometry;
 	}
 
-	// Collision checks all statics (and bots)
+	// Collision checks all objects (and bots)
 	protected int realValue(Environment env) {
 		Location loc = getRealLocation();
 		if (loc == null) return createDigitalValue(false);
@@ -73,8 +73,8 @@ public class ButtonSensor extends Sensor {
 			Area transform = new Area(geometry);
 			SimObject.transformArea(transform, loc);
 			// check against geometry
-			hit = collisionCheck(geometry, env.getObjects());
-			if (!hit) hit = collisionCheck(geometry, env.getRobots());
+			hit = collisionCheck(transform, env.getObjects());
+			if (!hit) hit = collisionCheck(transform, env.getRobots());
 		}
 		return createDigitalValue(hit);
 	}
@@ -82,15 +82,19 @@ public class ButtonSensor extends Sensor {
 	// Checks all objects in the list for collisions with the given point.
 	protected boolean collisionCheck(Point2D point, Collection<? extends SimObject> toCheck) {
 		for (SimObject obj : toCheck)
-			if (obj.getCollision().contains(point)) return true;
+			if (obj != getParentRobot() && obj.getTransformedCollision().contains(point))
+				return true;
 		return false;
 	}
 
-	// Checks all objects in the list for collisions with the given point.
+	// Checks all objects in the list for collisions with the given shape (area).
 	protected boolean collisionCheck(Area geom, Collection<? extends SimObject> toCheck) {
 		for (SimObject obj : toCheck) {
+			// stupid bug
+			if (obj == getParentRobot()) continue;
 			Area search = new Area(geom);
-			search.intersect(obj.getCollision());
+			// do it right
+			search.intersect(obj.getTransformedCollision());
 			if (!search.isEmpty()) return true;
 		}
 		return false;
