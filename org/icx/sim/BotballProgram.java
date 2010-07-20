@@ -146,9 +146,17 @@ public abstract class BotballProgram {
 		if (_ic()) {
 			create_power_led(0, 255);
 			create_stop();
-			gc_mode = 0;
-			g_create_connected = 0;
+			_create_disconnect();
 		}
+	}
+	// Fixes one lock up issue. Safe "disconnect" from Create
+	void _create_disconnect() {
+		_gc_leds[0] = 0;
+		_gc_leds[1] = 0;
+		_gc_leds[2] = 0;
+		_gc_l = _gc_r = 0;
+		gc_mode = 0;
+		g_create_connected = 0;
 	}
 	// Create Library: returns active Create mode
 	public int create_mode() {

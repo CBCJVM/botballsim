@@ -126,11 +126,11 @@ public class RobotsFile {
 	private static void readFile() {
 		try {
 			data = new Properties();
-			java.io.InputStream is = Simulator.class.getResourceAsStream("/robots.txt");
+			java.io.InputStream is = new java.io.FileInputStream("robots.txt");
 			data.load(is);
 			is.close();
 		} catch (Exception e) {
-			Simulator.die("Could not read information from robots.txt.");
+			Simulator.die("Could not read information from \"robots.txt\".");
 		}
 	}
 

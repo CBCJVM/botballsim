@@ -1,0 +1,16 @@
+The easiest method of building is to use Eclipse.
+There are two methods of importing into Eclipse:
+
+1) - File > New > Java Project
+   - Click the radio button labeled "Create project from existing source",
+      or uncheck the check box labeled "Use default location".
+   - Enter the location of the project root in the Directory text box.
+   - Select a project name and click Finish.
+
+2) - File > Import
+   - General > Existing Projects Into Workspace...
+   - Enter the location of the project root in the Project Root text box.
+   - Check the only entry and click Finish.
+
+Ant... working on it. It creates class files that like to eat 100% cpu for no apparent reason.
+Maybe that's the JRE's fault, but check back later.

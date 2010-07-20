@@ -28,8 +28,13 @@ import javax.swing.*;
  */
 public class BoardReader {
 	// Loads board into the simulator from the given file
+	//  Note that board.txt is EXTERNAL for easy modding.
 	public static void loadBoard(Simulator sim, String file) {
-		loadBoard(sim, Simulator.class.getResourceAsStream("/" + file));
+		try {
+			loadBoard(sim, new FileInputStream(file));
+		} catch (IOException e) {
+			Simulator.die("Game board must be specified in a file named \"" + file + "\".");
+		}
 	}
 	// Loads board into the simulator from the given stream
 	public static void loadBoard(Simulator sim, InputStream is) {
@@ -82,7 +87,6 @@ public class BoardReader {
 			}
 			br.close();
 		} catch (Exception e) {
-			e.printStackTrace();
 			Simulator.die("Failed to read game board.");
 		}
 	}

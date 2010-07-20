@@ -70,8 +70,6 @@ public class Simulator extends JFrame implements Runnable {
 	// Motors and servos as displayed on screen
 	private MotorComponent[] motors;
 	private MotorComponent[] servos;
-	// Loader that creates the Botball program
-	private ICClassLoader icLoader;
 	// The current program (currently only one)
 	private BotballProgram instance;
 	// Sensor configuration window
@@ -85,7 +83,6 @@ public class Simulator extends JFrame implements Runnable {
 	public Simulator() {
 		super("Botball Simulator");
 		setupUI();
-		icLoader = new ICClassLoader();
 		playIcon = getIcon("play");
 		pauseIcon = getIcon("pause");
 		str = new ClearableStringWriter();
@@ -718,7 +715,7 @@ public class Simulator extends JFrame implements Runnable {
 		disableServos();
 		ao();
 		if (instance != null && instance.gc_mode != 0)
-			instance.create_disconnect();
+			instance._create_disconnect();
 		// can't hurt
 		for (SimRobot bot : env.getRobots())
 			bot.setSpeeds(0, 0);
@@ -825,6 +822,7 @@ public class Simulator extends JFrame implements Runnable {
 				getLCDWriter());
 			if (res == 0) {
 				// load into memory
+				ICClassLoader icLoader = new ICClassLoader();
 				Class<?> program = icLoader.loadClass("Program");
 				instance = (BotballProgram)program.newInstance();
 				instance._setSim(this, env.getFirstRobot());
