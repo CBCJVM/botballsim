@@ -958,6 +958,7 @@ public abstract class BotballProgram {
 		UserThread t = new UserThread(_nextID, fn);
 		t.setPriority(Thread.MIN_PRIORITY);
 		t.setName("User Thread #" + _nextID + " (" + fn + ")");
+		printf(t.getName());
 		t.start();
 		_threads.add(t);
 		return _nextID++;

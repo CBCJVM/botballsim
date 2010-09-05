@@ -22,6 +22,8 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.awt.*;
 import java.net.*;
+import java.util.Arrays;
+import javax.tools.*;
 
 /**
  * The program that displays the simulation. 
@@ -827,9 +829,16 @@ public class Simulator extends JFrame implements Runnable {
 			CodeParser.syntax(jf.getSelectedFile(), r);
 			r.close();
 			// compile user code
-			int res = com.sun.tools.javac.Main.compile(new String[] { "Program.java" },
-				getLCDWriter());
-			if (res == 0) {
+			JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+			DiagnosticCollector<JavaFileObject> diagnostics =
+				new DiagnosticCollector<JavaFileObject>();
+			StandardJavaFileManager fileManager =
+				compiler.getStandardFileManager(diagnostics, null, null);
+			Iterable<? extends JavaFileObject> compilationUnits = fileManager
+				.getJavaFileObjectsFromStrings(Arrays.asList("Program.java"));
+			JavaCompiler.CompilationTask task = compiler.getTask(null,
+				fileManager, diagnostics, null, null, compilationUnits);
+			if (task.call()) {
 				// load into memory
 				ICClassLoader icLoader = new ICClassLoader();
 				Class<?> program = icLoader.loadClass("Program");
@@ -838,6 +847,9 @@ public class Simulator extends JFrame implements Runnable {
 				// moved down to avoid dup message if loading fails
 				print("Compile succeeded.\n");
 			} else {
+				for(Diagnostic d : diagnostics.getDiagnostics()) {
+					print(d.getMessage(null) + "\n");
+				}
 				print("Compile failed.\n");
 				instance = null;
 			}

@@ -1,0 +1,2 @@
+Build with apache-ant. Requires a version of the JDK to be installed not only to
+compile, but also to run (used to compile user code).

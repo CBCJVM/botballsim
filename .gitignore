@@ -1,0 +1,12 @@
+bin
+dist
+doc
+.settings
+.DS_Store?
+*.log
+*.out
+*.sql
+*.sqlite
+ehthumbs.db
+Icon?
+Thumbs.db
