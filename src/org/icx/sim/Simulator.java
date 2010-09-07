@@ -23,12 +23,14 @@ import java.awt.event.*;
 import java.awt.*;
 import java.net.*;
 import java.util.Arrays;
+import java.util.HashSet;
 import javax.tools.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * The program that displays the simulation. 
  * 
- * @author Stephen Carlson
+ * @author Stephen Carlson, CBCJVM and compiler modifications: Benjamin Woodruff
  */
 public class Simulator extends JFrame implements Runnable {
 	// all images are sourced as /images/name.ext
@@ -68,7 +70,8 @@ public class Simulator extends JFrame implements Runnable {
 	private PrintWriter lcdWriter;
 	private ClearableStringWriter str;
 	// The dialog box shown when "Load(ing) Code"
-	private JFileChooser jf;
+	private JFileChooser cFileChooser;
+	private JFileChooser javaFileChooser;
 	// Motors and servos as displayed on screen
 	private MotorComponent[] motors;
 	private MotorComponent[] servos;
@@ -78,7 +81,9 @@ public class Simulator extends JFrame implements Runnable {
 	private JDialog sensorSetup;
 	// The names of the installed sensors on the screen
 	private JLabel[] sensorNames;
-
+	// Denotes the different supported languages 
+	public enum Language { C, JAVA }
+	
 	/**
 	 * Creates a Simulator but does not start it.
 	 */
@@ -204,14 +209,22 @@ public class Simulator extends JFrame implements Runnable {
 		gc.addMouseListener(events);
 		gc.addMouseMotionListener(events);
 		// load code dialog
-		jf = new JFileChooser();
-		jf.setDialogType(JFileChooser.OPEN_DIALOG);
-		jf.setDialogTitle("Select KISS-C/IC File to Load");
-		jf.setFileFilter(new IKCFileFilter());
-		jf.setFileHidingEnabled(true);
-		jf.setCurrentDirectory(new File("."));
+		cFileChooser = getNewJFileChooser("KISS-C/IC", "c", "h");
+		javaFileChooser = getNewJFileChooser("CBCJVM/Java", "class", "jar", "java");
 	}
-
+	
+	private JFileChooser getNewJFileChooser(String filetype, String... extensions) {
+		JFileChooser fc = new JFileChooser();
+		fc.setDialogType(JFileChooser.OPEN_DIALOG);
+		fc.setDialogTitle("Select " + filetype + " File to Load");
+		fc.setFileFilter(
+			new FileNameExtensionFilter(filetype + " File", extensions)
+		);
+		fc.setFileHidingEnabled(true);
+		fc.setCurrentDirectory(new File("."));
+		return fc;
+	}
+	
 	// Initializes sensor extensions.
 	private void setupSensorUI() {
 		sensorSetup = new JDialog(this, "Sensor Setup", true);
@@ -270,6 +283,8 @@ public class Simulator extends JFrame implements Runnable {
 	private void setupTopUI() {
 		JComponent controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
 		JComponent vert = new Box(BoxLayout.Y_AXIS);
+		JComponent loadCodeHoriz = new Box(BoxLayout.X_AXIS);
+		loadCodeHoriz.setAlignmentX(JComponent.CENTER_ALIGNMENT);
 		JComponent across = new JPanel(new FlowLayout(FlowLayout.CENTER, 3, 3));
 		// play/pause button
 		pp = new JButton(playIcon);
@@ -289,18 +304,27 @@ public class Simulator extends JFrame implements Runnable {
 		across.add(stop);
 		vert.add(across);
 		// load code and hand of god
-		JButton load = new JButton("Load Code");
-		load.setActionCommand("load");
-		load.setFocusable(false);
-		load.addActionListener(events);
-		load.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+		JLabel loadLabel = new JLabel("Load");
+		JLabel codeLabel = new JLabel("Code");
+		JButton cload = new JButton("C");
+		cload.setActionCommand("load-c");
+		cload.setFocusable(false);
+		cload.addActionListener(events);
+		JButton jload = new JButton("CBCJVM");
+		jload.setActionCommand("load-cbcjvm");
+		jload.setFocusable(false);
+		jload.addActionListener(events);
 		god = new JButton("Hand of God");
 		god.setActionCommand("god");
 		god.setFocusable(false);
 		god.addActionListener(events);
 		god.setAlignmentX(JComponent.CENTER_ALIGNMENT);
 		// lay out with play/e-stop on top, then load code, then hand of god
-		vert.add(load);
+		loadCodeHoriz.add(loadLabel);
+		loadCodeHoriz.add(cload);
+		loadCodeHoriz.add(jload);
+		loadCodeHoriz.add(codeLabel);
+		vert.add(loadCodeHoriz);
 		vert.add(Box.createVerticalStrut(3));
 		vert.add(god);
 		vert.add(Box.createVerticalStrut(3));
@@ -682,20 +706,29 @@ public class Simulator extends JFrame implements Runnable {
 	}
 
 	// Loads code into the simulator.
-	private void loadCode() {
+	private void loadCode(Language lang) {
 		if (god.isSelected()) return;
 		eStop();
-		if (jf.showDialog(this, "Load") != JFileChooser.APPROVE_OPTION) return;
-		File what = jf.getSelectedFile();
-		if (what == null || !what.canRead()) return;
-		clearLCD();
-		// start compiling (CBC like message)
-		print("Compiling /mnt/user/code/test/test.c\n");
-		instance = null;
-		Thread compile = new Thread(this);
-		compile.setPriority(Thread.MAX_PRIORITY - 1);
-		compile.setName("User Code Compiler");
-		compile.start();
+		switch(lang) {
+			case C:
+				if (cFileChooser.showDialog(this, "Load") != JFileChooser.APPROVE_OPTION) return;
+				File what = cFileChooser.getSelectedFile();
+				if (what == null || !what.canRead()) return;
+				clearLCD();
+				// start compiling (CBC like message)
+				print("Compiling /mnt/user/code/test/test.c\n");
+				instance = null;
+				Thread compile = new Thread(this);
+				compile.setPriority(Thread.MAX_PRIORITY - 1);
+				compile.setName("User Code Compiler");
+				compile.start();
+				break;
+			case JAVA:
+				clearLCD();
+				// start compiling (CBC like message)
+				print("Error: CBCJVM handler not yet implemented");
+				break;
+		}
 	}
 
 	/**
@@ -825,8 +858,8 @@ public class Simulator extends JFrame implements Runnable {
 			pause();
 			pp.setEnabled(false);
 			// call up code parsing
-			Reader r = new FileReader(jf.getSelectedFile());
-			CodeParser.syntax(jf.getSelectedFile(), r);
+			Reader r = new FileReader(cFileChooser.getSelectedFile());
+			CodeParser.syntax(cFileChooser.getSelectedFile(), r);
 			r.close();
 			// compile user code
 			JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -972,8 +1005,10 @@ public class Simulator extends JFrame implements Runnable {
 		public void actionPerformed(ActionEvent e) {
 			String cmd = e.getActionCommand();
 			if (cmd == null) return;
-			if (cmd.equals("load"))
-				loadCode();
+			if (cmd.equals("load-c"))
+				loadCode(Language.C);
+			else if (cmd.equals("load-cbcjvm"))
+				loadCode(Language.JAVA);
 			else if (cmd.equals("play") && instance != null)
 				play();
 			else if (cmd.equals("god"))
@@ -1102,19 +1137,6 @@ public class Simulator extends JFrame implements Runnable {
 		}
 		public int length() {
 			return buf.length();
-		}
-	}
-
-	// Accepts IC and KISS-C files
-	private static class IKCFileFilter extends javax.swing.filechooser.FileFilter {
-		public boolean accept(File f) {
-			String name = f.getName();
-			return f.isDirectory() || name.endsWith(".c") || name.endsWith(".ic") ||
-				name.endsWith(".h");
-		}
-
-		public String getDescription() {
-			return "IC and KISS-C files";
 		}
 	}
 }
