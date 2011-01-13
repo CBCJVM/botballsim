@@ -54,18 +54,18 @@ public abstract class BotballProgram {
 	private static final int _MODE_FULL = 3;
 	private static final int _MODE_PASSIVE = 1;
 	// Variables defined by Create library for Create sensors and status
-	protected int g_create_connected, g_create_USB;
-	protected int gc_lbump, gc_rbump, gc_ldrop, gc_rdrop, gc_fdrop;
-	protected int gc_rcliff, gc_rfcliff, gc_lcliff, gc_lfcliff;
-	protected int gc_rcliff_amt, gc_rfcliff_amt, gc_lcliff_amt, gc_lfcliff_amt;
-	protected int gc_distance, gc_angle, gc_total_angle, gc_advance_button, gc_play_button;
-	protected int gc_wall, gc_wall_amt, gc_wall_hb, gc_IR;
-	protected int gc_vel, gc_radius, gc_rvel, gc_lvel;
-	protected int gc_overcurrents, gc_batt_charge, gc_batt_capacity;
-	protected int gc_charge_state, gc_batt_voltage, gc_current_flow, gc_batt_temp;
-	protected int gc_digital_in, gc_analog_in, gc_charge_source;
-	protected int[][] gc_song_array;
-	protected int gc_mode;
+	public int g_create_connected, g_create_USB;
+	public int gc_lbump, gc_rbump, gc_ldrop, gc_rdrop, gc_fdrop;
+	public int gc_rcliff, gc_rfcliff, gc_lcliff, gc_lfcliff;
+	public int gc_rcliff_amt, gc_rfcliff_amt, gc_lcliff_amt, gc_lfcliff_amt;
+	public int gc_distance, gc_angle, gc_total_angle, gc_advance_button, gc_play_button;
+	public int gc_wall, gc_wall_amt, gc_wall_hb, gc_IR;
+	public int gc_vel, gc_radius, gc_rvel, gc_lvel;
+	public int gc_overcurrents, gc_batt_charge, gc_batt_capacity;
+	public int gc_charge_state, gc_batt_voltage, gc_current_flow, gc_batt_temp;
+	public int gc_digital_in, gc_analog_in, gc_charge_source;
+	public int[][] gc_song_array;
+	public int gc_mode;
 	// Internal variables not to be accessed by user code.
 	private float _shutdown;    // Used by shut_down_in
 	private int _gc_l, _gc_r;   // raw Create wheel velocities in mm/sec

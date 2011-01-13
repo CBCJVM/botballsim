@@ -25,6 +25,9 @@ import java.awt.*;
  * @author Stephen Carlson
  */
 public class SimTest {
+	
+	private static Simulator instance;
+	
 	// Tests the simulator with the board in board.txt.
 	public static void main(String[] args) {
 		// really?
@@ -36,6 +39,7 @@ public class SimTest {
 			System.exit(1);
 		}
 		Simulator s = new Simulator();
+		instance = s;
 		// read board from board.txt
 		BoardReader.loadBoard(s, "board.txt");
 		s.start();
@@ -48,4 +52,6 @@ public class SimTest {
 		r.getSetup().setStart(new Location(600, 600));
 		s.addRobot(r);
 	}
+	
+	public Simulator getInstance() { return instance; }
 }
