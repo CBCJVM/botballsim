@@ -17,7 +17,7 @@
 
 package org.icx.sim.cbcjvm;
 
-import cbccore.low.Device;
+import cbccore.low.Sound;
 import org.icx.sim.BotballProgram;
 
 /**
@@ -25,21 +25,18 @@ import org.icx.sim.BotballProgram;
  * Documentation stolen from the KISS-C documentation
  *
  * @author  Benjamin Woodruff, Braden McDorman
- * @see     cbccore.low.Device
+ * @see     cbccore.low.Sound
  */
 
-public class SimulatedDevice extends Device {
+public class SimulatedSound extends Sound {
 	
 	protected BotballProgram bp;
 	
-	public SimulatedDevice(BotballProgram bp) { this.bp = bp; }
+	public SimulatedSound(BotballProgram bp) { this.bp = bp; }
 	
+	public void tone(int frequency, int duration) {
+		bp.tone(frequency, duration);
+	}
 	
-	/**
-	 * Gets the current power level in volts.
-	 * 
-	 * @return The current power level in volts
-	 */
-	public float power_level() { return bp.power_level; }
+	public void beep() { bp.beep() }
 }
- 

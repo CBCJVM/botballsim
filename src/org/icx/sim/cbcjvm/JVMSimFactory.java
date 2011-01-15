@@ -17,29 +17,31 @@
 
 package org.icx.sim.cbcjvm;
 
-import cbccore.low.Device;
-import org.icx.sim.BotballProgram;
+import cbccore.low.SimulatorFactory;
 
 /**
- * Contains stubs for botballsim.
- * Documentation stolen from the KISS-C documentation
- *
- * @author  Benjamin Woodruff, Braden McDorman
- * @see     cbccore.low.Device
+ * Creates a new JVMSim object
+ * 
+ * @author Benjamin Woodruff
+ * 
  */
 
-public class SimulatedDevice extends Device {
+public class JVMSimFactory extends SimulatorFactory {
 	
-	protected BotballProgram bp;
+	public JVMSimFactory() {
+		// nothing
+	}
 	
-	public SimulatedDevice(BotballProgram bp) { this.bp = bp; }
-	
-	
-	/**
-	 * Gets the current power level in volts.
-	 * 
-	 * @return The current power level in volts
-	 */
-	public float power_level() { return bp.power_level; }
+	public Simulator getNewSimulator() {
+		return new JVMSim();
+	}
 }
- 
+
+
+
+
+
+
+
+
+

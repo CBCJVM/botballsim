@@ -17,7 +17,7 @@
 
 package org.icx.sim.cbcjvm;
 
-import cbccore.low.Device;
+import cbccore.low.Servo;
 import org.icx.sim.BotballProgram;
 
 /**
@@ -25,21 +25,25 @@ import org.icx.sim.BotballProgram;
  * Documentation stolen from the KISS-C documentation
  *
  * @author  Benjamin Woodruff, Braden McDorman
- * @see     cbccore.low.Device
+ * @see     cbccore.low.Servo
  */
 
-public class SimulatedDevice extends Device {
+public class SimulatedServo extends Servo {
 	
 	protected BotballProgram bp;
 	
-	public SimulatedDevice(BotballProgram bp) { this.bp = bp; }
+	public SimulatedSensor(BotballProgram bp) { this.bp = bp; }
 	
 	
-	/**
-	 * Gets the current power level in volts.
-	 * 
-	 * @return The current power level in volts
-	 */
-	public float power_level() { return bp.power_level; }
+	public void enable_servos() { bp.enable_servos(); }
+	
+	public void disable_servos() { bp.disable_servos(); }
+	
+	public int set_servo_position(int servo, int pos) {
+		return set_servo_position(servo, pos);
+	}
+	
+	public int get_servo_position(int servo) {
+		return get_servo_position(servo);
+	}
 }
- 

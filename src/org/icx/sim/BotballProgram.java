@@ -945,6 +945,13 @@ public abstract class BotballProgram {
 		_s();
 		return (int)(i * Math.random());
 	}
+	
+	public void set_analog_floats(int mask) {
+		set_each_analog_state((mask>>0)&1, (mask>>1)&1, (mask>>2)&1,
+		                      (mask>>3)&1, (mask>>4)&1, (mask>>5)&1,
+		                      (mask>>6)&1, (mask>>7)&1);
+	}
+	
 	// CBC[2] Library: sets floating or non floating analog states
 	public void set_each_analog_state(int p0, int p1, int p2, int p3, int p4,
 			int p5, int p6, int p7) {

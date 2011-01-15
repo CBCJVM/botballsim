@@ -25,7 +25,7 @@ import org.icx.sim.BotballProgram;
  * Documentation stolen from the KISS-C documentation
  *
  * @author  Benjamin Woodruff, Braden McDorman
- * @see     cbccore.low.Create
+ * @see     cbccore.low.Input
  */
 
 public class SimulatedInput extends Input {
