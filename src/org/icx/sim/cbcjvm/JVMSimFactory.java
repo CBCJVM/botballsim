@@ -18,6 +18,7 @@
 package org.icx.sim.cbcjvm;
 
 import cbccore.low.SimulatorFactory;
+import cbccore.low.Simulator;
 
 /**
  * Creates a new JVMSim object
@@ -36,12 +37,3 @@ public class JVMSimFactory extends SimulatorFactory {
 		return new JVMSim();
 	}
 }
-
-
-
-
-
-
-
-
-

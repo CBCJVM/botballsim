@@ -111,6 +111,6 @@ public class SimulatedMotor extends Motor {
 	}
 	
 	public void ao() {
-		bp.ao()
+		bp.ao();
 	}
 }

@@ -40,6 +40,6 @@ public class SimulatedDevice extends Device {
 	 * 
 	 * @return The current power level in volts
 	 */
-	public float power_level() { return bp.power_level; }
+	public float power_level() { return bp.power_level(); }
 }
  

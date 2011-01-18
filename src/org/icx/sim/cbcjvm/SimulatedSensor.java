@@ -37,7 +37,7 @@ public class SimulatedSensor extends Sensor {
 	
 	public int digital(int port) { return bp.digital(port); }
 	
-	public int set_digital_output_value(int port, int value) {}
+	public int set_digital_output_value(int port, int value) { return 0; }
 	
 	public void set_analog_floats(int mask) {
 		bp.set_analog_floats(mask);
@@ -57,7 +57,7 @@ public class SimulatedSensor extends Sensor {
 	public int accel_y() { return bp.accel_y(); }
 	
 	public int accel_z() { return bp.accel_z(); }
-	               
+	
 	public int sonar(int port) { return bp.sonar(port); }
 	
 	public int sonar_inches(int port) { return bp.sonar_inches(port); }

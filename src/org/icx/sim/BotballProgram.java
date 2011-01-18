@@ -27,7 +27,7 @@ import java.util.*;
  * 
  * @author Stephen Carlson
  */
-public abstract class BotballProgram {
+public class BotballProgram {
 	// Constants (#define in standard library)
 	//  Unused, but left for compatibility
 	public static final int A_BUTTON = 1;
@@ -397,9 +397,9 @@ public abstract class BotballProgram {
 		if (_ic()) create_drive(v, 1);
 	}
 	// Create Library: spins and blocks for given ~ number of degrees
-	public void create_spin_block(int v, int degrees) {
+	public int create_spin_block(int v, int degrees) {
 		_nc();
-		if (v == 0 || degrees == 0) return;
+		if (v == 0 || degrees == 0) return 0;
 		if (_ic()) {
 			// The real one uses the encoders. If anyone wants to make this work with those,
 			//  go right ahead.
@@ -416,6 +416,7 @@ public abstract class BotballProgram {
 			}
 			create_stop();
 		}
+		return 0;
 	}
 	// Undocumented Create Library: fetch raw encoder values
 	public int _create_get_raw_encoders(long lvel, long rvel) {
@@ -449,40 +450,47 @@ public abstract class BotballProgram {
 		_nc();
 		if (_ic()) _bot.print("Simulator doesn't support create music\n");
 	}
+	
 	// END CREATE LIBRARY
 	// XBC/CBC Library: moves motor on given port at given velocity in ticks/second
-	public void mav(int port, int speed) {
-		if (port < 0 || port > 3) return;
-		if (!_checkPID()) return;
+	public int mav(int port, int speed) {
+		if (port < 0 || port > 3) return 0;
+		if (!_checkPID()) return 0;
 		if (speed > 1000)
 			speed = 1000;
 		else if (speed < -1000)
 			speed = -1000;
 		motor(port, speed / 10);
 		_speed[port] = speed;
+		return 0;
 	}
+	public int move_at_velocity(int port, int speed) {
+		return mav(port, speed);
+	}
+	
 	// XBC/CBC Library: moves motor on given port at given velocity to given destination
-	public void mrp(int port, int speed, long ticks) {
-		mtp(port, speed, _counts[port] + ticks);
+	public int mrp(int port, int speed, long ticks) {
+		return mtp(port, speed, _counts[port] + ticks);
 	}
 	// XBC/CBC Library: alias for mrp
-	public void move_relative_position(int port, int speed, long ticks) {
-		mrp(port, speed, ticks);
+	public int move_relative_position(int port, int speed, long ticks) {
+		return mrp(port, speed, ticks);
 	}
 	// XBC/CBC Library: moves motor on given port to given absolute destination
-	public void mtp(int port, int speed, long ticks) {
-		if (port < 0 || port > 3) return;
-		if (!_checkPID()) return;
+	public int mtp(int port, int speed, long ticks) {
+		if (port < 0 || port > 3) return 0;
+		if (!_checkPID()) return 0;
 		if (ticks == 0) {
 			off(port);
-			return;
+			return 0;
 		}
 		_pid_control(port, speed * (int)Math.signum(ticks -
 			get_motor_position_counter(port)), ticks);
+		return 0;
 	}
 	// XBC/CBC Library: alias for mtp
-	public void move_to_position(int port, int speed, long ticks) {
-		mtp(port, speed, ticks);
+	public int move_to_position(int port, int speed, long ticks) {
+		return mtp(port, speed, ticks);
 	}
 	// PID controls motor on given port to the new destination at given speed
 	private void _pid_control(int port, int speed, long dest) {
@@ -501,12 +509,13 @@ public abstract class BotballProgram {
 		return (int)_counts[port];
 	}
 	// XBC/CBC Library: clears position counter on given motor
-	public void clear_motor_position_counter(int port) {
+	public int clear_motor_position_counter(int port) {
 		_s();
-		if (port < 0 || port > 3) return;
-		if (!_checkPID()) return;
+		if (port < 0 || port > 3) return 0;
+		if (!_checkPID()) return 0;
 		_counts[port] = 0L;
 		_updateMotor(port);
+		return 0;
 	}
 	// HB/XBC/CBC Library: gets requested servo position on given port
 	public int get_servo_position(int port) {
@@ -555,18 +564,18 @@ public abstract class BotballProgram {
 	// XBC/CBC Library: wait until mrp or mtp is done on given port
 	public void bmd(int port) {
 		if (!_checkPID()) return;
-		while (!get_motor_done(port)) msleep(3L);
+		while (get_motor_done(port) == 0) msleep(3L);
 	}
 	// XBC/CBC Library: alias for bmd
 	public void block_motor_done(int port) {
 		bmd(port);
 	}
 	// XBC/CBC Library: checks if mrp or mtp is done on given port
-	public boolean get_motor_done(int port) {
+	public int get_motor_done(int port) {
 		_s();
-		if (port < 0 || port > 3) return false;
-		if (!_checkPID()) return true;
-		return _speed[port] == 0;
+		if (port < 0 || port > 3) return 0;
+		if (!_checkPID()) return 1;
+		return _speed[port];
 	}
 	// RCX/HB/XBC/CBC Library: waits for given number of milliseconds
 	public void msleep(long ms) {
@@ -734,10 +743,16 @@ public abstract class BotballProgram {
 		_updateMotor(port);
 	}
 	// RCX/HB/XBC/CBC Library: sets raw PWM on port
-	public void setpwm(int port, int speed) {
+	public int setpwm(int port, int speed) {
 		// Approximation
 		motor(port, speed * 100 / 255);
+		return 0;
 	}
+	
+	public int getpwm(int port) {
+		return _vel[port]*255/100;
+	}
+	
 	// RCX/HB/XBC/CBC Library: turns motor on in forward direction
 	public void fd(int port) {
 		motor(port, 100);
@@ -747,9 +762,9 @@ public abstract class BotballProgram {
 		motor(port, -100);
 	}
 	// XBC/CBC Library: PID freezes motor (not the same as electrical brake)
-	public void freeze(int port) {
-		if (port < 0 || port > 3) return;
-		if (!_checkPID()) return;
+	public int freeze(int port) {
+		if (port < 0 || port > 3) return 0;
+		if (!_checkPID()) return 0;
 		off(port);
 		// get_motor_done is never true if it's frozen
 		_speed[port] = 1;
@@ -759,14 +774,15 @@ public abstract class BotballProgram {
 		_bot.getMotor(port).setPower(500);
 		_bot.getMotor(port).setDest(_dest[port]);
 		_bot.getMotor(port).setPos(_counts[port]);
+		return 0;
 	}
 	// RCX/HB/XBC/CBC Library: reads digital sensor on the given port
-	public boolean digital(int port) {
+	public int digital(int port) {
 		_s();
 		defer();
 		if (_bot.controllerEquals(SimRobot.CBC_V1)) port = port + 8;
-		if (port < 8 || port > 15) return false;
-		return _bot.digital(port);
+		if (port < 8 || port > 15) return 0;
+		return _bot.digital(port)?1:0;
 	}
 	// RCX/HB/XBC/CBC Library: reads analog sensor on the given port
 	public int analog(int port) {
@@ -781,6 +797,7 @@ public abstract class BotballProgram {
 		return _bot.analog(port);
 	}
 	// XBC Library: reads analog sensor to 12-bit (4092) precision
+
 	public int analog12(int port) {
 		return 4 * analog10(port);
 	}
@@ -790,6 +807,11 @@ public abstract class BotballProgram {
 		if (port < 0 || port > 7) return 0;
 		return -32767;
 	}
+	
+	public int sonar_inches(int port) {
+		return (int)Math.round(sonar(port)/25.4);
+	}
+	
 	// RCX/HB/XBC/CBC Library: beeps
 	public void beep() {
 		tone(500., .07);

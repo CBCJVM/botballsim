@@ -34,14 +34,15 @@ public class JVMSim extends cbccore.low.Simulator {
 	BotballProgram bp = new BotballProgram();
 	
 	public JVMSim() {
-		super(new SimulatedSound(bp), new SimulatedSensor(bp),
-		      new SimulatedDevice(bp), new SimulatedDisplay(bp),
-		      new SimulatedInput(bp), new SimulatedServo(bp),
-		      new SimulatedMotor(bp), new SimulatedCamera(bp),
-		      new SimulatedCreate(bp));
+		super();
+		init(new SimulatedSound(bp), new SimulatedSensor(bp),
+		     new SimulatedDevice(bp), new SimulatedDisplay(bp),
+		     new SimulatedInput(bp), new SimulatedServo(bp),
+		     new SimulatedMotor(bp), new SimulatedCamera(bp),
+		     new SimulatedCreate(bp));
 	}
 	
 	public BotballProgram getBotballProgram() {
-		return bp
+		return bp;
 	}
 }

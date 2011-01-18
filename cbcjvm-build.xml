@@ -1,0 +1,92 @@
+<project name="botballsim" default="compile" basedir=".">
+	<description>
+		Can use git to automatically download, compile, and configure CBCJVM for
+		use in botballsim. This may or may not work on your system, depending on
+		certain configurations you may have on your machine. This should not be
+		called directly, but rather through the main botballsim build.xml file.
+	</description>
+	<!-- set global properties for this build -->
+	<property name="cbcjvm-src" value="cbcjvm-src"/>
+	<property name="subcbcjvm-antfile" value="${cbcjvm-src}/cbc/CBCJVM"/>
+	<property name="cbcjvm-url" value="git://github.com/CBCJVM/CBCJVM.git"/>
+	
+	<target name="clean" depends="clean-src, clean-bin"/>
+	
+	<target name="clean-src">
+		<delete dir="${cbcjvm-src}"/>
+	</target>
+	
+	<target name="clean-src-bin" depends="clean-bin">
+		<description>
+			clean the cbcjvm-src folder, but leave it in good condition so we
+			can attempt to pull the latest version (without a full clone)
+		</description>
+		<sequential>
+			<condition property="cbcjvm-src-exists">
+				<available file="${cbcjvm-src}" type="dir"/>
+			</condition>
+			<antcall target="clean-src-bin-helper"/>
+		</sequential>
+	</target>
+	
+	<target name="clean-src-bin-helper" if="cbcjvm-src-exists">
+		<ant antfile="build.xml" dir="${subcbcjvm-antfile}"
+		     inheritAll="false" target="clean"/>
+	</target>
+	
+	<target name="clean-bin">
+		<delete failonerror="false">
+			<fileset dir="${lib-bin}/cbccore"/>
+			<fileset dir="${lib-bin}/cbctools"/>
+		</delete>
+	</target>
+	
+	<target name="init" depends="clean-src-bin, clone"/>
+	
+	<target name="compile" depends="init">
+		<sequential>
+			<ant antfile="build.xml" dir="${subcbcjvm-antfile}"
+			     inheritAll="false" target="compile"/>
+			<copy todir="${lib-bin}/cbcjvm">
+				<fileset dir="${cbcjvm-src}/cbc/CBCJVM/bin"/>
+			</copy>
+		</sequential>
+	</target>
+	
+	<target name="clone">
+		<condition property="cbcjvm-src-exists">
+			<available file="${cbcjvm-src}" type="dir"/>
+		</condition>
+		<antcall target="clone-helper-pull"/>
+		<antcall target="clone-helper-clone"/>
+	</target>
+	
+	<target name="clone-helper-clone" unless="cbcjvm-src-exists">
+		<git command="clone">
+			<args>
+				<arg value="--depth" />
+				<arg value="1" />
+				<arg value="${cbcjvm-url}" />
+				<arg value="${cbcjvm-src}" />
+			</args>
+		</git>
+	</target>
+	
+	<target name="clone-helper-pull" if="cbcjvm-src-exists">
+		<git command="pull" />
+	</target>
+	
+	<!-- http://tlrobinson.net/blog/2008/11/13/ant-tasks-for-git/ -->
+	<macrodef name="git">
+		<attribute name="command" />
+		<attribute name="dir" default="" />
+		<element name="args" optional="true" />
+		<sequential>
+			<echo message="git @{command}" />
+			<exec executable="git" dir="@{dir}">
+				<arg value="@{command}" />
+				<args/>
+			</exec>
+		</sequential>
+	</macrodef>
+</project>

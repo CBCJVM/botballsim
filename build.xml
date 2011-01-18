@@ -1,76 +1,84 @@
 <project name="botballsim" default="dist" basedir=".">
-    <description>
-        A simple build file for botballsim
-    </description>
-  <!-- set global properties for this build -->
-  <property name="src" value="src"/>
-  <property name="rsc" value="rsc"/>
-  <property name="lib-src" value="lib-src"/>
-  <property name="lib-bin" value="lib-bin"/>
-  <property name="build" value="bin"/>
-  <property name="dist" value="dist"/>
-  <property name="docs" value="doc"/>
-  
-  <target name="init" depends="clean">
-    <tstamp/>
-    <mkdir dir="${build}"/>
-    <mkdir dir="${docs}"/>
-    <!--copy in binary libraries-->
-    <copy todir="${build}">
-      <fileset dir="${lib-bin}">
-        <include name="**/*.class"/>
-      </fileset>
-    </copy>
-    <!--copy in images from rsc-->
-    <copy todir="${build}/images">
-      <fileset dir="${rsc}/images"/>
-    </copy>
-    <copy todir="${dist}">
-      <fileset dir="${rsc}"/>
-    </copy>
-    <!--decompress any binary jar files from lib-bin to bin-->
-    <unjar dest="${build}">
-      <fileset dir="${lib-bin}">
-        <include name="**/*.jar"/>
-      </fileset>
-    </unjar>
-  </target>
-  
-  <target name="compile-depend" depends="init" description="compile the libs">
-    <javac srcdir="${lib-src}" destdir="${build}"/>
-  </target>
-  
-  <target name="compile" depends="init, compile-depend"
-      description="compile the source">
-    <javac srcdir="${src}" destdir="${build}"/>
-  </target>
-  
-  <target name="document">
-    <javadoc packagenames="org.icx.sim.*"
-             sourcepath="${src}"
-             destdir="${docs}"
-             author="true"
-             version="true"
-             use="true"
-             windowtitle="BotballSim API - JavaDoc">
-      <doctitle><![CDATA[<h1>BotballSim API</h1>]]></doctitle>
-      <bottom><![CDATA[<i>botballsim</i>]]></bottom>
-    </javadoc>
-  </target>
-  
-  <target name="dist" depends="compile, document"
-          description="generate the distribution">
-    <mkdir dir="${dist}"/>
-    <jar jarfile="${dist}/botballsim.jar" basedir="${build}">
-      <manifest>
-        <attribute name="Main-Class" value="org.icx.sim.SimTest"/>
-        <attribute name="Class-Path" value="../${rsc}"/>
-      </manifest>
-    </jar>
-  </target>
-  
-  <target name="clean" description="clean up">
-    <delete dir="${build}"/>
-    <delete dir="${dist}"/>
-  </target>
+	<description>
+		A simple build file for botballsim
+	</description>
+	<!-- set global properties for this build -->
+	<property name="src" value="src"/>
+	<property name="rsc" value="rsc"/>
+	<property name="lib-src" value="lib-src"/>
+	<property name="lib-bin" value="lib-bin"/>
+	<property name="build" value="bin"/>
+	<property name="dist" value="dist"/>
+	<property name="docs" value="doc"/>
+	<property name="cbcjvm-antfile" value="cbcjvm-build.xml"/>
+	
+	<target name="init" depends="clean-for-build">
+		<tstamp/>
+		<mkdir dir="${build}"/>
+		<mkdir dir="${docs}"/>
+		<!--copy in binary libraries-->
+		<copy todir="${build}">
+			<fileset dir="${lib-bin}/cbcjvm"/>
+		</copy>
+		<!--copy in images from rsc-->
+		<copy todir="${build}/images">
+			<fileset dir="${rsc}/images"/>
+		</copy>
+		<copy todir="${dist}">
+			<fileset dir="${rsc}"/>
+		</copy>
+		<!--decompress any binary jar files from lib-bin to bin-->
+		<!--unjar dest="${build}">
+			<fileset dir="${lib-bin}/somejarfile.jar">
+		</unjar-->
+	</target>
+	
+	<target name="compile-depend" depends="cbcjvm"
+	        description="compile the libs">
+	    <antcall target="init"/>
+		<javac srcdir="${lib-src}" destdir="${build}"/>
+	</target>
+	
+	<target name="compile" depends="compile-depend"
+			description="compile the source">
+		<javac srcdir="${src}" destdir="${build}"
+		       classpath="${lib-bin}/cbcjvm"/>
+	</target>
+	
+	<target name="document">
+		<javadoc packagenames="org.icx.sim.*"
+		         sourcepath="${src}"
+		         destdir="${docs}"
+		         author="true"
+		         version="true"
+		         use="true"
+		         windowtitle="BotballSim API - JavaDoc">
+			<doctitle><![CDATA[<h1>BotballSim API</h1>]]></doctitle>
+			<bottom><![CDATA[<i>botballsim</i>]]></bottom>
+		</javadoc>
+	</target>
+	
+	<target name="dist" depends="compile"
+	        description="generate the distribution">
+		<mkdir dir="${dist}"/>
+		<jar jarfile="${dist}/botballsim.jar" basedir="${build}">
+			<manifest>
+				<attribute name="Main-Class" value="org.icx.sim.SimTest"/>
+				<attribute name="Class-Path" value="../${rsc}"/>
+			</manifest>
+		</jar>
+	</target>
+	
+	<target name="clean-for-build" description="clean up">
+		<delete dir="${build}"/>
+		<delete dir="${dist}"/>
+	</target>
+	
+	<target name="clean" depends="clean-for-build">
+		<ant antfile="${cbcjvm-antfile}" target="clean"/>
+	</target>
+	
+	<target name="cbcjvm">
+		<ant antfile="${cbcjvm-antfile}" />
+	</target>
 </project>

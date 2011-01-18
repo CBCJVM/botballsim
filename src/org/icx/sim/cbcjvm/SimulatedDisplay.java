@@ -44,5 +44,5 @@ public class SimulatedDisplay extends Display {
 	/**
 	 * Clear the CBC display
 	 */
-	public native void cbc_display_clear() { bp.cbc_display_clear(); }
+	public void cbc_display_clear() { bp.cbc_display_clear(); }
 }

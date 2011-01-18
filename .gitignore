@@ -1,6 +1,8 @@
 bin
 dist
 doc
+lib-bin/cbcjvm/
+cbcjvm-src
 .settings
 .DS_Store?
 *.log

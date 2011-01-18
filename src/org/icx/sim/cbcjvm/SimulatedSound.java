@@ -38,5 +38,5 @@ public class SimulatedSound extends Sound {
 		bp.tone(frequency, duration);
 	}
 	
-	public void beep() { bp.beep() }
+	public void beep() { bp.beep(); }
 }

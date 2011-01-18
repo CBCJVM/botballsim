@@ -32,7 +32,7 @@ public class SimulatedServo extends Servo {
 	
 	protected BotballProgram bp;
 	
-	public SimulatedSensor(BotballProgram bp) { this.bp = bp; }
+	public SimulatedServo(BotballProgram bp) { this.bp = bp; }
 	
 	
 	public void enable_servos() { bp.enable_servos(); }

@@ -137,7 +137,7 @@ public class SimulatedCreate extends Create {
 	 * @see       #create_cover
 	 * @see       #create_cover_dock
 	 */
-	public void create_demo(int d) { bp.create_demo(); }
+	public void create_demo(int d) { bp.create_demo(d); }
 	
 	
 	
@@ -173,7 +173,7 @@ public class SimulatedCreate extends Create {
 	public int create_distance() { return bp.create_distance(); }
 	public int create_velocity() { return bp.create_velocity(); }
 	public int create_read_IR() { return bp.create_read_IR(); }
-	public int create_overcurrents() { return bp.create_overcurrents(); }
+	public int create_overcurrents() { return 0; }
 	public int create_battery_charge() { return bp.create_battery_charge(); }
 	public int create_cargo_bay_inputs() { return bp.create_cargo_bay_inputs();}
 	
@@ -267,7 +267,7 @@ public class SimulatedCreate extends Create {
 	 * @see           #create_spin_CCW
 	 */
 	public int create_spin_block(int speed, int angle) {
-		bp.create_spin_block(speed, angle);
+		return bp.create_spin_block(speed, angle);
 	}
 	
 	
@@ -321,9 +321,7 @@ public class SimulatedCreate extends Create {
 	 * 
 	 * @param  bits  Should have a value 0 to 7.
 	 */
-	public void create_digital_output(int bits) {
-		bp.create_digital_output(bits);
-	}
+	public void create_digital_output(int bits) {}
 	
 	
 	
